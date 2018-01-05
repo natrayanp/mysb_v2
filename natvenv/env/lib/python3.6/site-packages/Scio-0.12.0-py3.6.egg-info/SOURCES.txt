@@ -1,0 +1,15 @@
+MANIFEST.in
+setup.cfg
+setup.py
+Scio.egg-info/PKG-INFO
+Scio.egg-info/SOURCES.txt
+Scio.egg-info/dependency_links.txt
+Scio.egg-info/entry_points.txt
+Scio.egg-info/requires.txt
+Scio.egg-info/top_level.txt
+scio/__init__.py
+scio/autowsdl.py
+scio/client.py
+scio/gen.py
+scio/static.py
+scio/static_client.tpl

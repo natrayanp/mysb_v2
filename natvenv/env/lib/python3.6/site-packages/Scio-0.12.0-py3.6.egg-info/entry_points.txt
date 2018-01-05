@@ -1,0 +1,3 @@
+[console_scripts]
+scio_generate_client = scio.gen:main
+

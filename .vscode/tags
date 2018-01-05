@@ -1,0 +1,512 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+BankDetail	../Mandate_Creation/mandate.py	/^		from users.models import Mandate, BankDetail$/;"	kind:namespace	line:85
+CORS	../Customer_Creation/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../Mandate_Creation/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../allprocessing/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../dashboard/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../kite/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../loginservices/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+CORS	../natrayan/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+EXCHANGE_MAP	../natrayan/test.py	/^	EXCHANGE_MAP = {$/;"	kind:variable	line:755
+Firebase.py	../kite/Firebase.py	1;"	kind:file	line:1
+Flask	../Customer_Creation/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../Mandate_Creation/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../allprocessing/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../dashboard/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../kite/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../loginservices/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+Flask	../natrayan/__init__.py	/^from flask import Flask$/;"	kind:namespace	line:1
+INDICES	../natrayan/test.py	/^	INDICES = [EXCHANGE_MAP["nseindices"]]$/;"	kind:variable	line:767
+JWTCreationsettings.py	../kite/JWTCreationsettings.py	1;"	kind:file	line:1
+JWTCreationsettings.py	../loginservices/JWTCreationsettings.py	1;"	kind:file	line:1
+Jython	../natvenv/env/bin/rst2html5.py	/^    import locale # module missing in Jython$/;"	kind:namespace	line:24
+KiteConnect	../natrayan/test.py	/^class KiteConnect(object):$/;"	kind:class	line:107
+LIVE	../Customer_Creation/settings.py	/^LIVE = 0    $/;"	kind:variable	line:10
+LIVE	../Mandate_Creation/settings.py	/^LIVE = 1    $/;"	kind:variable	line:10
+LIVE	../kite/JWTCreationsettings.py	/^LIVE = 0    $/;"	kind:variable	line:9
+LIVE	../loginservices/JWTCreationsettings.py	/^LIVE = 0    $/;"	kind:variable	line:9
+MEMBERID	../Customer_Creation/settings.py	/^MEMBERID = ['17123', '17123']$/;"	kind:variable	line:19
+MEMBERID	../Mandate_Creation/settings.py	/^MEMBERID = ['', '']$/;"	kind:variable	line:19
+METHOD_ORDER_URL	../Customer_Creation/settings.py	/^METHOD_ORDER_URL = [$/;"	kind:variable	line:42
+METHOD_ORDER_URL	../Mandate_Creation/settings.py	/^METHOD_ORDER_URL = [$/;"	kind:variable	line:42
+METHOD_UPLOAD_URL	../Customer_Creation/settings.py	/^METHOD_UPLOAD_URL = [$/;"	kind:variable	line:56
+METHOD_UPLOAD_URL	../Mandate_Creation/settings.py	/^METHOD_UPLOAD_URL = [$/;"	kind:variable	line:56
+MODE_FULL	../natrayan/test.py	/^	MODE_FULL = "full"$/;"	kind:variable	line:774
+MODE_LTP	../natrayan/test.py	/^	MODE_LTP = "ltp"$/;"	kind:variable	line:776
+MODE_QUOTE	../natrayan/test.py	/^	MODE_QUOTE = "quote"$/;"	kind:variable	line:775
+Mandate	../Mandate_Creation/mandate.py	/^		from users.models import Mandate, BankDetail$/;"	kind:namespace	line:85
+NAMESPACES	../natvenv/env/bin/rst2odt_prepstyles.py	/^NAMESPACES = {$/;"	kind:variable	line:22
+PASSKEY	../Customer_Creation/settings.py	/^PASSKEY = ['0123456789', '9958788281']$/;"	kind:variable	line:26
+PASSKEY	../Mandate_Creation/settings.py	/^PASSKEY = ['0123456789', '9958788281']$/;"	kind:variable	line:26
+PASSWORD	../Customer_Creation/settings.py	/^PASSWORD = ['@123456', '@123456']$/;"	kind:variable	line:23
+PASSWORD	../Mandate_Creation/settings.py	/^PASSWORD = ['', '']$/;"	kind:variable	line:23
+PY2	../natrayan/test.py	/^from six import StringIO, PY2$/;"	kind:namespace	line:86
+READ_TIMEOUT	../natrayan/test.py	/^	READ_TIMEOUT = 5$/;"	kind:variable	line:769
+RECONNECT_INTERVAL	../natrayan/test.py	/^	RECONNECT_INTERVAL = 5$/;"	kind:variable	line:770
+RECONNECT_TRIES	../natrayan/test.py	/^	RECONNECT_TRIES = 50$/;"	kind:variable	line:771
+Reader	../natvenv/env/bin/rst2odt.py	/^from docutils.writers.odf_odt import Writer, Reader$/;"	kind:namespace	line:19
+Registrationstatus	../allprocessing/__init__.py	/^from allprocessing import Registrationstatus/;"	kind:namespace	line:9
+Registrationstatus.py	../allprocessing/Registrationstatus.py	1;"	kind:file	line:1
+Response	../Customer_Creation/cust.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+Response	../Mandate_Creation/mandate.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+Response	../natrayan/portfolio.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+Response	../natrayan/views.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+SVC_ORDER_URL	../Customer_Creation/settings.py	/^SVC_ORDER_URL = [$/;"	kind:variable	line:38
+SVC_ORDER_URL	../Mandate_Creation/settings.py	/^SVC_ORDER_URL = [$/;"	kind:variable	line:38
+SVC_UPLOAD_URL	../Customer_Creation/settings.py	/^SVC_UPLOAD_URL = [$/;"	kind:variable	line:52
+SVC_UPLOAD_URL	../Mandate_Creation/settings.py	/^SVC_UPLOAD_URL = [$/;"	kind:variable	line:52
+StringIO	../natrayan/test.py	/^from six import StringIO, PY2$/;"	kind:namespace	line:86
+USERID	../Customer_Creation/settings.py	/^USERID = ['1712301', '1712301'] $/;"	kind:variable	line:20
+USERID	../Mandate_Creation/settings.py	/^USERID = ['', ''] $/;"	kind:variable	line:20
+WSDL_ORDER_URL	../Customer_Creation/settings.py	/^WSDL_ORDER_URL = [$/;"	kind:variable	line:34
+WSDL_ORDER_URL	../Mandate_Creation/settings.py	/^WSDL_ORDER_URL = [$/;"	kind:variable	line:34
+WSDL_UPLOAD_URL	../Customer_Creation/settings.py	/^WSDL_UPLOAD_URL = [$/;"	kind:variable	line:48
+WSDL_UPLOAD_URL	../Mandate_Creation/settings.py	/^WSDL_UPLOAD_URL = [$/;"	kind:variable	line:48
+WebSocket	../natrayan/test.py	/^class WebSocket(object):$/;"	kind:class	line:648
+Writer	../natvenv/env/bin/rst2odt.py	/^from docutils.writers.odf_odt import Writer, Reader$/;"	kind:namespace	line:19
+__init__	../natrayan/test.py	/^	def __init__(self, api_key, access_token=None, root=None, debug=False, timeout=7, micro_cache=True, proxies=None, pool=None):$/;"	kind:member	line:162
+__init__	../natrayan/test.py	/^	def __init__(self, api_key, public_token, user_id, root=None, reconnect=False,$/;"	kind:member	line:788
+__init__.py	../Customer_Creation/__init__.py	1;"	kind:file	line:1
+__init__.py	../Mandate_Creation/__init__.py	1;"	kind:file	line:1
+__init__.py	../allprocessing/__init__.py	1;"	kind:file	line:1
+__init__.py	../dashboard/__init__.py	1;"	kind:file	line:1
+__init__.py	../kite/__init__.py	1;"	kind:file	line:1
+__init__.py	../loginservices/__init__.py	1;"	kind:file	line:1
+__init__.py	../natrayan/__init__.py	1;"	kind:file	line:1
+_create_connection	../natrayan/test.py	/^	def _create_connection(self, url):$/;"	kind:member	line:839
+_delete	../natrayan/test.py	/^	def _delete(self, route, params=None):$/;"	kind:member	line:556
+_get	../natrayan/test.py	/^	def _get(self, route, params=None):$/;"	kind:member	line:544
+_login	../natrayan/test.py	/^	_login = "https:\/\/kite.trade\/connect\/login"$/;"	kind:variable	line:116
+_message_code	../natrayan/test.py	/^	_message_code = 11$/;"	kind:variable	line:779
+_message_setmode	../natrayan/test.py	/^	_message_setmode = "mode"$/;"	kind:variable	line:782
+_message_subscribe	../natrayan/test.py	/^	_message_subscribe = "subscribe"$/;"	kind:variable	line:780
+_message_unsubscribe	../natrayan/test.py	/^	_message_unsubscribe = "unsubscribe"$/;"	kind:variable	line:781
+_on_close	../natrayan/test.py	/^	def _on_close(self, ws):$/;"	kind:member	line:1059
+_on_connect	../natrayan/test.py	/^	def _on_connect(self, ws):$/;"	kind:member	line:1024
+_on_data	../natrayan/test.py	/^	def _on_data(self, ws, data, resp_type, data_continue):$/;"	kind:member	line:1049
+_on_error	../natrayan/test.py	/^	def _on_error(self, ws, error):$/;"	kind:member	line:1076
+_on_message	../natrayan/test.py	/^	def _on_message(self, ws, message):$/;"	kind:member	line:1083
+_parse_binary	../natrayan/test.py	/^	def _parse_binary(self, bin):$/;"	kind:member	line:1112
+_parse_csv	../natrayan/test.py	/^	def _parse_csv(self, data):$/;"	kind:member	line:510
+_parse_mf_instruments	../natrayan/test.py	/^	def _parse_mf_instruments(self, data):$/;"	kind:member	line:532
+_post	../natrayan/test.py	/^	def _post(self, route, params=None):$/;"	kind:member	line:548
+_put	../natrayan/test.py	/^	def _put(self, route, params=None):$/;"	kind:member	line:552
+_request	../natrayan/test.py	/^	def _request(self, route, method, parameters=None):$/;"	kind:member	line:560
+_root	../natrayan/test.py	/^	_root = "https:\/\/api.kite.trade"$/;"	kind:variable	line:115
+_root	../natrayan/test.py	/^	_root = "wss:\/\/websocket.kite.trade\/"$/;"	kind:variable	line:786
+_routes	../natrayan/test.py	/^	_routes = {$/;"	kind:variable	line:119
+_split_packets	../natrayan/test.py	/^	def _split_packets(self, bin):$/;"	kind:member	line:1209
+_timeout	../natrayan/test.py	/^	_timeout = 7$/;"	kind:variable	line:160
+_timer	../natrayan/test.py	/^	def _timer(self):$/;"	kind:member	line:1088
+_unpack_int	../natrayan/test.py	/^	def _unpack_int(self, bin, start, end, byte_format="I"):$/;"	kind:member	line:1226
+app	../Customer_Creation/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../Customer_Creation/cust.py	/^from Customer_Creation import app$/;"	kind:namespace	line:1
+app	../Mandate_Creation/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../Mandate_Creation/mandate.py	/^from Mandate_Creation import app$/;"	kind:namespace	line:1
+app	../allprocessing/Registrationstatus.py	/^from allprocessing import app$/;"	kind:namespace	line:1
+app	../allprocessing/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../allprocessing/dbfunc.py	/^from allprocessing import app$/;"	kind:namespace	line:1
+app	../allprocessing/notificationprocessing.py	/^from allprocessing import app$/;"	kind:namespace	line:1
+app	../dashboard/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../dashboard/bankifsc.py	/^from dashboard import app$/;"	kind:namespace	line:1
+app	../dashboard/notification.py	/^from dashboard import app$/;"	kind:namespace	line:1
+app	../dashboard/test.py	/^from dashboard import app$/;"	kind:namespace	line:1
+app	../kite/Firebase.py	/^from natrayan import app$/;"	kind:namespace	line:1
+app	../kite/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../loginservices/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../loginservices/dbfunc.py	/^from loginservices import app$/;"	kind:namespace	line:1
+app	../loginservices/jwtdecodenoverify.py	/^from loginservices import app$/;"	kind:namespace	line:1
+app	../loginservices/loginsignup.py	/^from loginservices import app$/;"	kind:namespace	line:1
+app	../loginservices/registrationfatca.py	/^from loginservices import app$/;"	kind:namespace	line:1
+app	../natrayan/__init__.py	/^app = Flask(__name__)$/;"	kind:variable	line:4
+app	../natrayan/fundalloc.py	/^from natrayan import app$/;"	kind:namespace	line:1
+app	../natrayan/kitelogin.py	/^from natrayan import app$/;"	kind:namespace	line:1
+app	../natrayan/portfolio.py	/^from natrayan import app$/;"	kind:namespace	line:1
+app	../natrayan/views.py	/^from natrayan import app$/;"	kind:namespace	line:1
+argparse	../natvenv/env/bin/jp.py	/^import argparse$/;"	kind:namespace	line:5
+auth	../loginservices/loginsignup.py	/^from firebase_admin import auth$/;"	kind:namespace	line:8
+bankdets	../dashboard/test.py	/^def bankdets():$/;"	kind:function	line:16
+bankdets1	../dashboard/bankifsc.py	/^def bankdets1():$/;"	kind:function	line:14
+bankifsc	../dashboard/__init__.py	/^from dashboard import bankifsc$/;"	kind:namespace	line:7
+bankifsc.py	../dashboard/bankifsc.py	1;"	kind:file	line:1
+boto3	../kite/Firebase.py	/^import boto3$/;"	kind:namespace	line:12
+boto3	../natrayan/kitelogin.py	/^import boto3$/;"	kind:namespace	line:12
+chkifalldone	../dashboard/notification.py	/^def chkifalldone(con,cur,command,lazyloadid,userid,entityid):                $/;"	kind:function	line:136
+cknotiusrup2dt	../allprocessing/notificationprocessing.py	/^def cknotiusrup2dt(screenid,userid,entityid,con,cur):$/;"	kind:function	line:153
+close	../natrayan/test.py	/^	def close(self):$/;"	kind:member	line:929
+config	../Customer_Creation/cust.py	/^	import logging.config$/;"	kind:namespace	line:312
+config	../Mandate_Creation/mandate.py	/^	import logging.config$/;"	kind:namespace	line:138
+connect	../natrayan/test.py	/^	def connect(self, threaded=False, disable_ssl_verification=False, proxy=None):$/;"	kind:member	line:848
+create_mandate_bse	../Mandate_Creation/mandate.py	/^def create_mandate_bse():$/;"	kind:function	line:11
+create_user_bse	../Customer_Creation/cust.py	/^def create_user_bse():$/;"	kind:function	line:11
+credentials	../kite/Firebase.py	/^from firebase_admin import credentials$/;"	kind:namespace	line:7
+credentials	../loginservices/loginsignup.py	/^from firebase_admin import credentials$/;"	kind:namespace	line:7
+credentials	../natrayan/kitelogin.py	/^from firebase_admin import credentials$/;"	kind:namespace	line:7
+cross_origin	../Customer_Creation/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../Mandate_Creation/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../allprocessing/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../dashboard/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../kite/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../loginservices/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+cross_origin	../natrayan/__init__.py	/^from flask_cors import CORS, cross_origin$/;"	kind:namespace	line:2
+csv	../natrayan/test.py	/^import csv$/;"	kind:namespace	line:88
+cust	../Customer_Creation/__init__.py	/^from Customer_Creation import cust$/;"	kind:namespace	line:7
+cust.py	../Customer_Creation/cust.py	1;"	kind:file	line:1
+datetime	../allprocessing/Registrationstatus.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+datetime	../allprocessing/notificationprocessing.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+datetime	../dashboard/bankifsc.py	/^from datetime import datetime$/;"	kind:namespace	line:3
+datetime	../dashboard/notification.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+datetime	../dashboard/test.py	/^from datetime import datetime$/;"	kind:namespace	line:6
+datetime	../kite/Firebase.py	/^from datetime import datetime$/;"	kind:namespace	line:4
+datetime	../loginservices/jwtdecodenoverify.py	/^from datetime import datetime$/;"	kind:namespace	line:3
+datetime	../loginservices/loginsignup.py	/^from datetime import datetime$/;"	kind:namespace	line:3
+datetime	../loginservices/registrationfatca.py	/^from datetime import datetime$/;"	kind:namespace	line:3
+datetime	../natrayan/fundalloc.py	/^from datetime import datetime$/;"	kind:namespace	line:4
+datetime	../natrayan/kitelogin.py	/^from datetime import datetime$/;"	kind:namespace	line:4
+datetime	../natrayan/portfolio.py	/^from datetime import datetime$/;"	kind:namespace	line:4
+db	../allprocessing/Registrationstatus.py	/^from allprocessing import dbfunc as db$/;"	kind:namespace	line:5
+db	../allprocessing/notificationprocessing.py	/^from allprocessing import dbfunc as db$/;"	kind:namespace	line:5
+db	../loginservices/loginsignup.py	/^from loginservices import dbfunc as db$/;"	kind:namespace	line:9
+db	../loginservices/registrationfatca.py	/^from loginservices import dbfunc as db$/;"	kind:namespace	line:6
+dbfunc	../allprocessing/__init__.py	/^from allprocessing import dbfunc$/;"	kind:namespace	line:8
+dbfunc	../loginservices/__init__.py	/^from loginservices import dbfunc$/;"	kind:namespace	line:8
+dbfunc.py	../allprocessing/dbfunc.py	1;"	kind:file	line:1
+dbfunc.py	../loginservices/dbfunc.py	1;"	kind:file	line:1
+default_description	../natvenv/env/bin/rst2html.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+default_description	../natvenv/env/bin/rst2html4.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:20
+default_description	../natvenv/env/bin/rst2html5.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:29
+default_description	../natvenv/env/bin/rst2man.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:21
+default_description	../natvenv/env/bin/rst2odt.py	/^from docutils.core import publish_cmdline_to_binary, default_description$/;"	kind:namespace	line:18
+default_description	../natvenv/env/bin/rst2pseudoxml.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+default_description	../natvenv/env/bin/rst2s5.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:18
+default_description	../natvenv/env/bin/rst2xml.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+default_description	../natvenv/env/bin/rstpep2html.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:18
+description	../natvenv/env/bin/rst2html.py	/^description = ('Generates (X)HTML documents from standalone reStructuredText '$/;"	kind:variable	line:20
+description	../natvenv/env/bin/rst2html4.py	/^description = ('Generates (X)HTML documents from standalone reStructuredText '$/;"	kind:variable	line:23
+description	../natvenv/env/bin/rst2html5.py	/^description = (u'Generates HTML 5 documents from standalone '$/;"	kind:variable	line:31
+description	../natvenv/env/bin/rst2latex.py	/^description = ('Generates LaTeX documents from standalone reStructuredText '$/;"	kind:variable	line:19
+description	../natvenv/env/bin/rst2man.py	/^description = ("Generates plain unix manual documents.  " + default_description)$/;"	kind:variable	line:24
+description	../natvenv/env/bin/rst2odt.py	/^    description=description)$/;"	kind:variable	line:29
+description	../natvenv/env/bin/rst2odt.py	/^description = ('Generates OpenDocument\/OpenOffice\/ODF documents from '$/;"	kind:variable	line:22
+description	../natvenv/env/bin/rst2pseudoxml.py	/^description = ('Generates pseudo-XML from standalone reStructuredText '$/;"	kind:variable	line:20
+description	../natvenv/env/bin/rst2s5.py	/^description = ('Generates S5 (X)HTML slideshow documents from standalone '$/;"	kind:variable	line:21
+description	../natvenv/env/bin/rst2xetex.py	/^description = ('Generates LaTeX documents from standalone reStructuredText '$/;"	kind:variable	line:19
+description	../natvenv/env/bin/rst2xml.py	/^description = ('Generates Docutils-native XML from standalone '$/;"	kind:variable	line:20
+description	../natvenv/env/bin/rstpep2html.py	/^                description=description)$/;"	kind:variable	line:25
+description	../natvenv/env/bin/rstpep2html.py	/^description = ('Generates (X)HTML from reStructuredText-format PEP files.  '$/;"	kind:variable	line:21
+dill	../natvenv/env/bin/dill_unpickle.py	/^  import dill$/;"	kind:namespace	line:11
+dill_unpickle.py	../natvenv/env/bin/dill_unpickle.py	1;"	kind:file	line:1
+disable_reconnect	../natrayan/test.py	/^	def disable_reconnect(self):$/;"	kind:member	line:1020
+enable_reconnect	../natrayan/test.py	/^	def enable_reconnect(self, reconnect_interval=None, reconnect_tries=None):$/;"	kind:member	line:1009
+etree	../natvenv/env/bin/rst2odt_prepstyles.py	/^from lxml import etree$/;"	kind:namespace	line:15
+ex	../natrayan/test.py	/^import kiteconnect.exceptions as ex$/;"	kind:namespace	line:99
+exceptions	../natvenv/env/bin/jp.py	/^from jmespath import exceptions$/;"	kind:namespace	line:9
+extras	../loginservices/registrationfatca.py	/^import psycopg2, psycopg2.extras$/;"	kind:namespace	line:9
+firebase_admin	../kite/Firebase.py	/^import firebase_admin$/;"	kind:namespace	line:6
+firebase_admin	../loginservices/loginsignup.py	/^import firebase_admin$/;"	kind:namespace	line:6
+firebase_admin	../natrayan/kitelogin.py	/^import firebase_admin$/;"	kind:namespace	line:6
+fundalloc	../kite/__init__.py	/^from natrayan import fundalloc$/;"	kind:namespace	line:10
+fundalloc	../natrayan/__init__.py	/^from natrayan import fundalloc$/;"	kind:namespace	line:10
+fundalloc.py	../natrayan/fundalloc.py	1;"	kind:file	line:1
+get_objgraph.py	../natvenv/env/bin/get_objgraph.py	1;"	kind:file	line:1
+getfundaloc	../natrayan/fundalloc.py	/^def getfundaloc():$/;"	kind:function	line:12
+hashlib	../natrayan/test.py	/^import hashlib$/;"	kind:namespace	line:92
+historical	../natrayan/test.py	/^	def historical(self, instrument_token, from_date, to_date, interval, continuous=False):$/;"	kind:member	line:474
+holdings	../natrayan/test.py	/^	def holdings(self):$/;"	kind:member	line:353
+in	../natvenv/env/bin/rst2html5.py	/^    import locale # module missing in Jython$/;"	kind:namespace	line:24
+index	../natrayan/views.py	/^def index():$/;"	kind:function	line:12
+instruments	../natrayan/test.py	/^	def instruments(self, exchange=None):$/;"	kind:member	line:457
+invalidate_token	../natrayan/test.py	/^	def invalidate_token(self, access_token=None):$/;"	kind:member	line:253
+is_connected	../natrayan/test.py	/^	def is_connected(self):$/;"	kind:member	line:897
+jmespath	../natvenv/env/bin/jp.py	/^import jmespath$/;"	kind:namespace	line:8
+jp.py	../natvenv/env/bin/jp.py	1;"	kind:file	line:1
+json	../Customer_Creation/cust.py	/^import json$/;"	kind:namespace	line:7
+json	../Mandate_Creation/mandate.py	/^import json$/;"	kind:namespace	line:7
+json	../allprocessing/Registrationstatus.py	/^import json$/;"	kind:namespace	line:10
+json	../allprocessing/notificationprocessing.py	/^import json$/;"	kind:namespace	line:10
+json	../dashboard/bankifsc.py	/^import json$/;"	kind:namespace	line:9
+json	../dashboard/notification.py	/^import json$/;"	kind:namespace	line:9
+json	../dashboard/test.py	/^import json$/;"	kind:namespace	line:12
+json	../kite/Firebase.py	/^import json$/;"	kind:namespace	line:11
+json	../loginservices/jwtdecodenoverify.py	/^import json$/;"	kind:namespace	line:8
+json	../loginservices/loginsignup.py	/^import json$/;"	kind:namespace	line:14
+json	../loginservices/registrationfatca.py	/^import json$/;"	kind:namespace	line:12
+json	../natrayan/fundalloc.py	/^import json$/;"	kind:namespace	line:7
+json	../natrayan/kitelogin.py	/^import json$/;"	kind:namespace	line:11
+json	../natrayan/portfolio.py	/^import json$/;"	kind:namespace	line:7
+json	../natrayan/test.py	/^import json$/;"	kind:namespace	line:90
+json	../natrayan/views.py	/^import json$/;"	kind:namespace	line:7
+json	../natvenv/env/bin/jp.py	/^import json$/;"	kind:namespace	line:4
+jsonify	../Customer_Creation/cust.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+jsonify	../Mandate_Creation/mandate.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+jsonify	../allprocessing/Registrationstatus.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../allprocessing/dbfunc.py	/^from flask import jsonify$/;"	kind:namespace	line:2
+jsonify	../allprocessing/notificationprocessing.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../dashboard/bankifsc.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../dashboard/notification.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../dashboard/test.py	/^from flask import jsonify$/;"	kind:namespace	line:7
+jsonify	../loginservices/dbfunc.py	/^from flask import jsonify$/;"	kind:namespace	line:2
+jsonify	../loginservices/jwtdecodenoverify.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../loginservices/loginsignup.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../loginservices/registrationfatca.py	/^from flask import jsonify$/;"	kind:namespace	line:4
+jsonify	../natrayan/fundalloc.py	/^from flask import redirect, request, jsonify$/;"	kind:namespace	line:2
+jsonify	../natrayan/portfolio.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+jsonify	../natrayan/views.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+jwt	../allprocessing/Registrationstatus.py	/^import jwt$/;"	kind:namespace	line:8
+jwt	../allprocessing/notificationprocessing.py	/^import jwt$/;"	kind:namespace	line:8
+jwt	../dashboard/bankifsc.py	/^import jwt$/;"	kind:namespace	line:7
+jwt	../dashboard/notification.py	/^import jwt$/;"	kind:namespace	line:7
+jwt	../dashboard/test.py	/^import jwt$/;"	kind:namespace	line:10
+jwt	../kite/Firebase.py	/^import jwt$/;"	kind:namespace	line:9
+jwt	../loginservices/jwtdecodenoverify.py	/^import jwt$/;"	kind:namespace	line:6
+jwt	../loginservices/loginsignup.py	/^import jwt$/;"	kind:namespace	line:12
+jwt	../loginservices/registrationfatca.py	/^import jwt$/;"	kind:namespace	line:10
+jwt	../natrayan/fundalloc.py	/^import jwt$/;"	kind:namespace	line:8
+jwt	../natrayan/kitelogin.py	/^import jwt$/;"	kind:namespace	line:9
+jwt	../natrayan/portfolio.py	/^import jwt$/;"	kind:namespace	line:8
+jwtdecodenoverify	../loginservices/__init__.py	/^from loginservices import jwtdecodenoverify/;"	kind:namespace	line:10
+jwtdecodenoverify.py	../loginservices/jwtdecodenoverify.py	1;"	kind:file	line:1
+jwtnoverify	../loginservices/registrationfatca.py	/^from loginservices import jwtdecodenoverify as jwtnoverify$/;"	kind:namespace	line:7
+kiteconnect	../natrayan/test.py	/^import kiteconnect.exceptions as ex$/;"	kind:namespace	line:99
+kitelogin	../kite/__init__.py	/^from natrayan import kitelogin$/;"	kind:namespace	line:8
+kitelogin	../natrayan/__init__.py	/^from natrayan import kitelogin$/;"	kind:namespace	line:8
+kitelogin.py	../natrayan/kitelogin.py	1;"	kind:file	line:1
+load_types	../natvenv/env/bin/get_objgraph.py	/^from dill import load_types$/;"	kind:namespace	line:18
+locale	../natvenv/env/bin/rst2html.py	/^    import locale$/;"	kind:namespace	line:12
+locale	../natvenv/env/bin/rst2html4.py	/^    import locale$/;"	kind:namespace	line:15
+locale	../natvenv/env/bin/rst2html5.py	/^    import locale # module missing in Jython$/;"	kind:namespace	line:24
+locale	../natvenv/env/bin/rst2latex.py	/^    import locale$/;"	kind:namespace	line:12
+locale	../natvenv/env/bin/rst2man.py	/^import locale$/;"	kind:namespace	line:15
+locale	../natvenv/env/bin/rst2odt.py	/^    import locale$/;"	kind:namespace	line:13
+locale	../natvenv/env/bin/rst2pseudoxml.py	/^    import locale$/;"	kind:namespace	line:12
+locale	../natvenv/env/bin/rst2s5.py	/^    import locale$/;"	kind:namespace	line:13
+locale	../natvenv/env/bin/rst2xetex.py	/^    import locale$/;"	kind:namespace	line:12
+locale	../natvenv/env/bin/rst2xml.py	/^    import locale$/;"	kind:namespace	line:12
+locale	../natvenv/env/bin/rstpep2html.py	/^    import locale$/;"	kind:namespace	line:13
+logger	../natrayan/test.py	/^logger = logging.getLogger(__name__)$/;"	kind:variable	line:103
+logging	../Customer_Creation/cust.py	/^	import logging.config$/;"	kind:namespace	line:312
+logging	../Mandate_Creation/mandate.py	/^	import logging.config$/;"	kind:namespace	line:138
+logging	../dashboard/test.py	/^import logging$/;"	kind:namespace	line:4
+logging	../natrayan/test.py	/^import logging$/;"	kind:namespace	line:93
+login_url	../natrayan/test.py	/^	def login_url(self):$/;"	kind:member	line:225
+loginroute	../natrayan/kitelogin.py	/^def loginroute():$/;"	kind:function	line:15
+loginsignup	../loginservices/__init__.py	/^from loginservices import loginsignup$/;"	kind:namespace	line:7
+loginsignup.py	../loginservices/loginsignup.py	1;"	kind:file	line:1
+main	../natvenv/env/bin/jp.py	/^def main():$/;"	kind:function	line:12
+main	../natvenv/env/bin/rst2odt_prepstyles.py	/^def main():$/;"	kind:function	line:54
+mainnotification	../dashboard/notification.py	/^def mainnotification():$/;"	kind:function	line:13
+make_response	../Customer_Creation/cust.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+make_response	../Mandate_Creation/mandate.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+make_response	../allprocessing/Registrationstatus.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../allprocessing/notificationprocessing.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../dashboard/bankifsc.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../dashboard/notification.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../dashboard/test.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:5
+make_response	../loginservices/jwtdecodenoverify.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../loginservices/loginsignup.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../loginservices/registrationfatca.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+make_response	../natrayan/portfolio.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+make_response	../natrayan/views.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+mandate	../Mandate_Creation/__init__.py	/^from Mandate_Creation import mandate$/;"	kind:namespace	line:7
+mandate.py	../Mandate_Creation/mandate.py	1;"	kind:file	line:1
+manpage	../natvenv/env/bin/rst2man.py	/^from docutils.writers import manpage$/;"	kind:namespace	line:22
+margins	../natrayan/test.py	/^	def margins(self, segment):$/;"	kind:member	line:263
+mf_holdings	../natrayan/test.py	/^	def mf_holdings(self):$/;"	kind:member	line:449
+mf_instruments	../natrayan/test.py	/^	def mf_instruments(self):$/;"	kind:member	line:453
+mf_order_cancel	../natrayan/test.py	/^	def mf_order_cancel(self, order_id):$/;"	kind:member	line:398
+mf_order_place	../natrayan/test.py	/^	def mf_order_place(self,$/;"	kind:member	line:383
+mf_orders	../natrayan/test.py	/^	def mf_orders(self, order_id=None):$/;"	kind:member	line:376
+mf_sip_cancel	../natrayan/test.py	/^	def mf_sip_cancel(self, sip_id):$/;"	kind:member	line:445
+mf_sip_modify	../natrayan/test.py	/^	def mf_sip_modify(self,$/;"	kind:member	line:428
+mf_sip_place	../natrayan/test.py	/^	def mf_sip_place(self,$/;"	kind:member	line:409
+mf_sips	../natrayan/test.py	/^	def mf_sips(self, sip_id=None):$/;"	kind:member	line:402
+missing	../natvenv/env/bin/rst2html5.py	/^    import locale # module missing in Jython$/;"	kind:namespace	line:24
+mkstemp	../natvenv/env/bin/rst2odt_prepstyles.py	/^from tempfile import mkstemp$/;"	kind:namespace	line:18
+module	../natvenv/env/bin/rst2html5.py	/^    import locale # module missing in Jython$/;"	kind:namespace	line:24
+msg	../natvenv/env/bin/get_objgraph.py	/^        msg = "\\n"$/;"	kind:variable	line:26
+mydbfunc	../allprocessing/dbfunc.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:7
+mydbfunc	../dashboard/bankifsc.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:72
+mydbfunc	../dashboard/notification.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:150
+mydbfunc	../dashboard/test.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:73
+mydbfunc	../loginservices/dbfunc.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:7
+mydbfunc	../natrayan/fundalloc.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:185
+mydbfunc	../natrayan/portfolio.py	/^def mydbfunc(con,cur,command):$/;"	kind:function	line:388
+natkeyss	../loginservices/loginsignup.py	/^def natkeyss():$/;"	kind:function	line:19
+notification	../dashboard/__init__.py	/^from dashboard import notification/;"	kind:namespace	line:9
+notification.py	../dashboard/notification.py	1;"	kind:file	line:1
+notificationprocessing	../allprocessing/__init__.py	/^from allprocessing import notificationprocessing$/;"	kind:namespace	line:7
+notificationprocessing.py	../allprocessing/notificationprocessing.py	1;"	kind:file	line:1
+notiprocess	../allprocessing/notificationprocessing.py	/^def notiprocess():$/;"	kind:function	line:14
+obj	../natvenv/env/bin/get_objgraph.py	/^        obj = objects[objtype]$/;"	kind:variable	line:32
+objects	../natvenv/env/bin/get_objgraph.py	/^from dill import objects$/;"	kind:namespace	line:20
+objgraph	../natvenv/env/bin/get_objgraph.py	/^            import objgraph$/;"	kind:namespace	line:34
+objtype	../natvenv/env/bin/get_objgraph.py	/^        objtype = str(sys.argv[-1])$/;"	kind:variable	line:31
+onlypff	../natrayan/portfolio.py	/^def onlypff():$/;"	kind:function	line:347
+order_cancel	../natrayan/test.py	/^	def order_cancel(self, order_id, variety="regular", parent_order_id=None):$/;"	kind:member	line:320
+order_modify	../natrayan/test.py	/^	def order_modify(self,$/;"	kind:member	line:296
+order_place	../natrayan/test.py	/^	def order_place(self,$/;"	kind:member	line:270
+orders	../natrayan/test.py	/^	def orders(self, order_id=None):$/;"	kind:member	line:329
+os	../natvenv/env/bin/rst2odt_prepstyles.py	/^import os$/;"	kind:namespace	line:20
+output	../natvenv/env/bin/rst2odt.py	/^output = publish_cmdline_to_binary(reader=reader, writer=writer,$/;"	kind:variable	line:28
+pfdatafetchh	../natrayan/portfolio.py	/^def pfdatafetchh():$/;"	kind:function	line:12
+pfdatasavee	../natrayan/portfolio.py	/^def pfdatasavee():$/;"	kind:function	line:54
+pformat	../natvenv/env/bin/jp.py	/^from pprint import pformat$/;"	kind:namespace	line:6
+pfscreen	../kite/Firebase.py	/^def pfscreen():$/;"	kind:function	line:92
+pfscreen	../natrayan/kitelogin.py	/^def pfscreen():$/;"	kind:function	line:224
+pickle	../natvenv/env/bin/get_objgraph.py	/^import dill as pickle$/;"	kind:namespace	line:13
+portfolio	../kite/__init__.py	/^from natrayan import portfolio$/;"	kind:namespace	line:9
+portfolio	../natrayan/__init__.py	/^from natrayan import portfolio$/;"	kind:namespace	line:9
+portfolio.py	../natrayan/portfolio.py	1;"	kind:file	line:1
+positions	../natrayan/test.py	/^	def positions(self):$/;"	kind:member	line:349
+prepare_fatca_param	../Customer_Creation/cust.py	/^def prepare_fatca_param(client_code):$/;"	kind:function	line:153
+prepare_mandate_param	../Mandate_Creation/mandate.py	/^def prepare_mandate_param(client_code, amount):$/;"	kind:function	line:42
+prepare_user_param	../Customer_Creation/cust.py	/^def prepare_user_param(client_code):$/;"	kind:function	line:38
+prepstyle	../natvenv/env/bin/rst2odt_prepstyles.py	/^def prepstyle(filename):$/;"	kind:function	line:27
+product_modify	../natrayan/test.py	/^	def product_modify(self,$/;"	kind:member	line:357
+psycopg2	../allprocessing/Registrationstatus.py	/^import psycopg2$/;"	kind:namespace	line:7
+psycopg2	../allprocessing/dbfunc.py	/^import psycopg2$/;"	kind:namespace	line:4
+psycopg2	../allprocessing/notificationprocessing.py	/^import psycopg2$/;"	kind:namespace	line:7
+psycopg2	../dashboard/bankifsc.py	/^import psycopg2$/;"	kind:namespace	line:6
+psycopg2	../dashboard/notification.py	/^import psycopg2$/;"	kind:namespace	line:6
+psycopg2	../dashboard/test.py	/^import psycopg2$/;"	kind:namespace	line:9
+psycopg2	../loginservices/dbfunc.py	/^import psycopg2$/;"	kind:namespace	line:4
+psycopg2	../loginservices/loginsignup.py	/^import psycopg2$/;"	kind:namespace	line:11
+psycopg2	../loginservices/registrationfatca.py	/^import psycopg2, psycopg2.extras$/;"	kind:namespace	line:9
+psycopg2	../natrayan/fundalloc.py	/^import psycopg2$/;"	kind:namespace	line:6
+psycopg2	../natrayan/portfolio.py	/^import psycopg2$/;"	kind:namespace	line:6
+publish_cmdline	../natvenv/env/bin/rst2html.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+publish_cmdline	../natvenv/env/bin/rst2html4.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:20
+publish_cmdline	../natvenv/env/bin/rst2html5.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:29
+publish_cmdline	../natvenv/env/bin/rst2latex.py	/^from docutils.core import publish_cmdline$/;"	kind:namespace	line:17
+publish_cmdline	../natvenv/env/bin/rst2man.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:21
+publish_cmdline	../natvenv/env/bin/rst2pseudoxml.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+publish_cmdline	../natvenv/env/bin/rst2s5.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:18
+publish_cmdline	../natvenv/env/bin/rst2xetex.py	/^from docutils.core import publish_cmdline$/;"	kind:namespace	line:17
+publish_cmdline	../natvenv/env/bin/rst2xml.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:17
+publish_cmdline	../natvenv/env/bin/rstpep2html.py	/^from docutils.core import publish_cmdline, default_description$/;"	kind:namespace	line:18
+publish_cmdline_to_binary	../natvenv/env/bin/rst2odt.py	/^from docutils.core import publish_cmdline_to_binary, default_description$/;"	kind:namespace	line:18
+quote	../natrayan/test.py	/^	def quote(self, exchange, tradingsymbol):$/;"	kind:member	line:470
+reader	../natvenv/env/bin/rst2odt.py	/^reader = Reader()$/;"	kind:variable	line:27
+reconnect	../natrayan/test.py	/^	def reconnect(self):$/;"	kind:member	line:904
+redirect	../Customer_Creation/cust.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+redirect	../Mandate_Creation/mandate.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+redirect	../allprocessing/Registrationstatus.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../allprocessing/notificationprocessing.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../dashboard/bankifsc.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../dashboard/notification.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../dashboard/test.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:5
+redirect	../kite/Firebase.py	/^from flask import redirect, request$/;"	kind:namespace	line:2
+redirect	../loginservices/jwtdecodenoverify.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../loginservices/loginsignup.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../loginservices/registrationfatca.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+redirect	../natrayan/fundalloc.py	/^from flask import redirect, request, jsonify$/;"	kind:namespace	line:2
+redirect	../natrayan/kitelogin.py	/^from flask import redirect, request$/;"	kind:namespace	line:2
+redirect	../natrayan/portfolio.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+redirect	../natrayan/views.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+redirets	../natrayan/kitelogin.py	/^def redirets():$/;"	kind:function	line:24
+registdetfetch	../loginservices/registrationfatca.py	/^def registdetfetch():$/;"	kind:function	line:17
+registrationfatca	../loginservices/__init__.py	/^from loginservices import registrationfatca$/;"	kind:namespace	line:9
+registrationfatca.py	../loginservices/registrationfatca.py	1;"	kind:file	line:1
+registrationstatus	../allprocessing/Registrationstatus.py	/^def registrationstatus():$/;"	kind:function	line:13
+request	../Customer_Creation/cust.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+request	../Mandate_Creation/mandate.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+request	../allprocessing/Registrationstatus.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../allprocessing/notificationprocessing.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../dashboard/bankifsc.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../dashboard/notification.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../dashboard/test.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:5
+request	../kite/Firebase.py	/^from flask import redirect, request$/;"	kind:namespace	line:2
+request	../loginservices/jwtdecodenoverify.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../loginservices/loginsignup.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../loginservices/registrationfatca.py	/^from flask import redirect, request,make_response$/;"	kind:namespace	line:2
+request	../natrayan/fundalloc.py	/^from flask import redirect, request, jsonify$/;"	kind:namespace	line:2
+request	../natrayan/kitelogin.py	/^from flask import redirect, request$/;"	kind:namespace	line:2
+request	../natrayan/portfolio.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+request	../natrayan/views.py	/^from flask import request, make_response, jsonify, Response, redirect$/;"	kind:namespace	line:3
+request_access_token	../natrayan/test.py	/^	def request_access_token(self, request_token, secret):$/;"	kind:member	line:232
+requests	../Customer_Creation/cust.py	/^import requests$/;"	kind:namespace	line:6
+requests	../Mandate_Creation/mandate.py	/^import requests$/;"	kind:namespace	line:6
+requests	../allprocessing/Registrationstatus.py	/^import requests$/;"	kind:namespace	line:9
+requests	../allprocessing/notificationprocessing.py	/^import requests$/;"	kind:namespace	line:9
+requests	../dashboard/bankifsc.py	/^import requests$/;"	kind:namespace	line:8
+requests	../dashboard/notification.py	/^import requests$/;"	kind:namespace	line:8
+requests	../dashboard/test.py	/^import requests$/;"	kind:namespace	line:11
+requests	../kite/Firebase.py	/^import requests$/;"	kind:namespace	line:10
+requests	../loginservices/jwtdecodenoverify.py	/^import requests$/;"	kind:namespace	line:7
+requests	../loginservices/loginsignup.py	/^import requests$/;"	kind:namespace	line:13
+requests	../loginservices/registrationfatca.py	/^import requests$/;"	kind:namespace	line:11
+requests	../natrayan/kitelogin.py	/^import requests$/;"	kind:namespace	line:10
+requests	../natrayan/test.py	/^import requests$/;"	kind:namespace	line:94
+requests	../natrayan/views.py	/^import requests$/;"	kind:namespace	line:6
+resubscribe	../natrayan/test.py	/^	def resubscribe(self):$/;"	kind:member	line:985
+rst2html.py	../natvenv/env/bin/rst2html.py	1;"	kind:file	line:1
+rst2html4.py	../natvenv/env/bin/rst2html4.py	1;"	kind:file	line:1
+rst2html5.py	../natvenv/env/bin/rst2html5.py	1;"	kind:file	line:1
+rst2latex.py	../natvenv/env/bin/rst2latex.py	1;"	kind:file	line:1
+rst2man.py	../natvenv/env/bin/rst2man.py	1;"	kind:file	line:1
+rst2odt.py	../natvenv/env/bin/rst2odt.py	1;"	kind:file	line:1
+rst2odt_prepstyles.py	../natvenv/env/bin/rst2odt_prepstyles.py	1;"	kind:file	line:1
+rst2pseudoxml.py	../natvenv/env/bin/rst2pseudoxml.py	1;"	kind:file	line:1
+rst2s5.py	../natvenv/env/bin/rst2s5.py	1;"	kind:file	line:1
+rst2xetex.py	../natvenv/env/bin/rst2xetex.py	1;"	kind:file	line:1
+rst2xml.py	../natvenv/env/bin/rst2xml.py	1;"	kind:file	line:1
+rstpep2html.py	../natvenv/env/bin/rstpep2html.py	1;"	kind:file	line:1
+serviceAccountKey	../kite/JWTCreationsettings.py	/^serviceAccountKey=$/;"	kind:variable	line:16
+serviceAccountKey	../loginservices/JWTCreationsettings.py	/^serviceAccountKey=$/;"	kind:variable	line:16
+set_access_token	../natrayan/test.py	/^	def set_access_token(self, access_token):$/;"	kind:member	line:221
+set_mode	../natrayan/test.py	/^	def set_mode(self, mode, instrument_tokens):$/;"	kind:member	line:967
+set_session_hook	../natrayan/test.py	/^	def set_session_hook(self, method):$/;"	kind:member	line:207
+set_soap_logging	../Customer_Creation/cust.py	/^def set_soap_logging():$/;"	kind:function	line:311
+set_soap_logging	../Mandate_Creation/mandate.py	/^def set_soap_logging():$/;"	kind:function	line:137
+setkeyw	../kite/Firebase.py	/^def setkeyw():$/;"	kind:function	line:16
+setkeyw	../natrayan/kitelogin.py	/^def setkeyw():$/;"	kind:function	line:154
+settings	../Customer_Creation/cust.py	/^from Customer_Creation import settings$/;"	kind:namespace	line:4
+settings	../Mandate_Creation/mandate.py	/^from Mandate_Creation import settings$/;"	kind:namespace	line:4
+settings.py	../Customer_Creation/settings.py	1;"	kind:file	line:1
+settings.py	../Mandate_Creation/settings.py	1;"	kind:file	line:1
+shutil	../natvenv/env/bin/rst2odt_prepstyles.py	/^import shutil$/;"	kind:namespace	line:19
+signupf	../loginservices/loginsignup.py	/^def signupf():$/;"	kind:function	line:162
+signupf1	../loginservices/registrationfatca.py	/^def signupf1():$/;"	kind:function	line:190
+soap_create_mandate	../Mandate_Creation/mandate.py	/^def soap_create_mandate(client, mandate_param, pass_dict):$/;"	kind:function	line:68
+soap_create_user	../Customer_Creation/cust.py	/^def soap_create_user(client, user_param, pass_dict):$/;"	kind:function	line:286
+soap_get_password_upload	../Customer_Creation/cust.py	/^def soap_get_password_upload(client):$/;"	kind:function	line:259
+soap_get_password_upload	../Mandate_Creation/mandate.py	/^def soap_get_password_upload(client):$/;"	kind:function	line:112
+soap_set_wsa_headers	../Customer_Creation/cust.py	/^def soap_set_wsa_headers(method_url, svc_url):$/;"	kind:function	line:339
+soap_set_wsa_headers	../Mandate_Creation/mandate.py	/^def soap_set_wsa_headers(method_url, svc_url):$/;"	kind:function	line:165
+ssl	../natrayan/test.py	/^import ssl$/;"	kind:namespace	line:87
+struct	../natrayan/test.py	/^import struct$/;"	kind:namespace	line:91
+subscribe	../natrayan/test.py	/^	def subscribe(self, instrument_tokens):$/;"	kind:member	line:934
+sys	../natrayan/test.py	/^				import sys$/;"	kind:namespace	line:890
+sys	../natvenv/env/bin/dill_unpickle.py	/^  import sys$/;"	kind:namespace	line:10
+sys	../natvenv/env/bin/get_objgraph.py	/^    import sys$/;"	kind:namespace	line:23
+sys	../natvenv/env/bin/jp.py	/^import sys$/;"	kind:namespace	line:3
+sys	../natvenv/env/bin/rst2odt.py	/^import sys$/;"	kind:namespace	line:11
+sys	../natvenv/env/bin/rst2odt_prepstyles.py	/^import sys$/;"	kind:namespace	line:16
+test	../dashboard/__init__.py	/^from dashboard import test$/;"	kind:namespace	line:8
+test.py	../dashboard/test.py	1;"	kind:file	line:1
+test.py	../natrayan/test.py	1;"	kind:file	line:1
+threading	../dashboard/test.py	/^import threading$/;"	kind:namespace	line:2
+threading	../natrayan/test.py	/^import threading$/;"	kind:namespace	line:95
+time	../dashboard/test.py	/^import time$/;"	kind:namespace	line:3
+time	../natrayan/test.py	/^import time$/;"	kind:namespace	line:89
+timedelta	../allprocessing/Registrationstatus.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+timedelta	../allprocessing/notificationprocessing.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+timedelta	../dashboard/notification.py	/^from datetime import datetime, timedelta$/;"	kind:namespace	line:3
+trades	../natrayan/test.py	/^	def trades(self, order_id=None):$/;"	kind:member	line:336
+trigger_range	../natrayan/test.py	/^	def trigger_range(self, exchange, tradingsymbol, transaction_type):$/;"	kind:member	line:506
+unsubscribe	../natrayan/test.py	/^	def unsubscribe(self, instrument_tokens):$/;"	kind:member	line:949
+validatetoken	../dashboard/notification.py	/^def validatetoken(request):$/;"	kind:function	line:170
+validatetoken	../loginservices/jwtdecodenoverify.py	/^def validatetoken(request):$/;"	kind:function	line:10
+views	../kite/__init__.py	/^from natrayan import views$/;"	kind:namespace	line:7
+views	../natrayan/__init__.py	/^from natrayan import views$/;"	kind:namespace	line:7
+views.py	../natrayan/views.py	1;"	kind:file	line:1
+websocket	../natrayan/test.py	/^import websocket$/;"	kind:namespace	line:97
+writer	../natvenv/env/bin/rst2odt.py	/^writer = Writer()$/;"	kind:variable	line:26
+zeep	../Customer_Creation/cust.py	/^import zeep$/;"	kind:namespace	line:8
+zeep	../Mandate_Creation/mandate.py	/^import zeep$/;"	kind:namespace	line:8
+zipfile	../natvenv/env/bin/rst2odt_prepstyles.py	/^import zipfile$/;"	kind:namespace	line:17
