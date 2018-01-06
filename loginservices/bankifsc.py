@@ -1,8 +1,9 @@
-from dashboard import app
+from loginservices import app
 from flask import redirect, request,make_response
 from datetime import datetime
 from flask import jsonify
 
+from loginservices import dbfunc as db
 import psycopg2
 import jwt
 import requests
@@ -10,8 +11,8 @@ import json
 
 
       
-@app.route('/bankdet1',methods=['GET','POST','OPTIONS'])
-def bankdets1():
+@app.route('/bankdet',methods=['GET','POST','OPTIONS'])
+def bankdets():
 #This is called by setjws service
     if request.method=='OPTIONS':
         print("inside bankdets options")
@@ -25,19 +26,15 @@ def bankdets1():
         print(reqdataifsc)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         
-  
-        #This is to be moved to a configurable place
-        conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
-        #This is to be moved to a configurable place
-        con=psycopg2.connect(conn_string)
-        cur = con.cursor()
+        con,cur=db.mydbopncon()
 
-        command = cur.mogrify("select * from bankifscmaster ifsc where ifsc = %s;",(reqdataifsc,) )
-        cur, dbqerr = mydbfunc(con,cur,command)
+        command = cur.mogrify("select * from bankifscmaster where ifsc = %s;",(reqdataifsc,) )
+        cur, dbqerr = db.mydbfunc(con,cur,command)
         print(cur)
         print(dbqerr)
         print(type(dbqerr))
         print(dbqerr['natstatus'])
+
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
                 dbqerr['statusdetails']="IFSC Fetch failed"
@@ -55,7 +52,7 @@ def bankdets1():
         print(len(records))
 
         #if len(records) == 0:
-        if cur.count == 0:
+        if cur.rowcount == 0:
             bank, ifsc, micr, branch, address, contact, city, district, state = ['']*9
             failed=True
             errormsg='Not a valid IFSC'
@@ -67,25 +64,6 @@ def bankdets1():
   
         bankdetailresp = bank+' '+address+'    '+city+' '+state
         print(bankdetailresp)
+        
         return (json.dumps({'bank':bank,'ifsc':ifsc,'micr':micr,'branch':branch,'address':address,'contact':contact, 'city':city, 'district':district, 'state':state,'failed':failed,'errormsg':errormsg}))
     
-def mydbfunc(con,cur,command):
-    try:
-        cur.execute(command)            
-        myerror={'natstatus':'success','statusdetails':''}
-    except psycopg2.Error as e:
-        print(e)
-        myerror= {'natstatus':'error','statusdetails':''}
-    except psycopg2.Warning as e:
-        print(e)
-        myerror={'natstatus':'warning','statusdetails':''}
-        #myerror = {'natstatus':'warning','statusdetails':e}
-    finally:
-        if myerror['natstatus'] != "success":    
-            con.rollback()
-            cur.close()
-            con.close()
-            
-    return cur,myerror  
-
-

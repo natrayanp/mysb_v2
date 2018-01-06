@@ -8,3 +8,4 @@ from loginservices import loginsignup
 from loginservices import dbfunc
 from loginservices import registrationfatca
 from loginservices import jwtdecodenoverify
+from loginservices import bankifsc
