@@ -474,6 +474,106 @@ def dtlfrmsave():
         print('commit successful')
         return make_response(jsonify('ok'), 200) 
 
+
+@app.route('/regisandfatcsubmit',methods=['GET','POST','OPTIONS'])
+def regisandfatcsubmit():
+    #Endpoint to submit both registration and fatca details
+    if request.method=='OPTIONS':
+        print("inside regisandfatcsubmit options")
+        return make_response(jsonify('inside regisandfatcsubmit options'), 200)  
+
+    elif request.method=='POST':
+        print("inside regisandfatcsubmit POST")
+        
+        print((request))        
+        userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        
+        con,cur=db.mydbopncon()
+
+        print(con)
+        print(cur)
+        
+        command = cur.mogrify("SELECT row_to_json(t) from(SELECT * FROM uccclientmaster A FULL OUTER JOIN fatcamaster B ON A.ucclguserid = B.fatcalguserid) as t where t.fatcalguserid = %s and t.fatcaentityid = %s AND t.ucclguserid = %s AND t.uccentityid = %s;",(userid,entityid,userid,entityid,))
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(cur)
+        print(dbqerr)
+        print(type(dbqerr))
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="loginuser Fetch failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        else:
+            pass
+        
+        records=[]
+        for record in cur:  
+            print('inside for')
+            print(record)             
+            records.append(record)
+
+        print(len(records))
+
+        #if len(records) == 0:
+        if (cur.rowcount) == 0:
+            errorresp= {'natstatus':'error','statusdetails':'User not registered/activated'}
+            resps = make_response(jsonify(errorresp), 400)
+            print(resps)    
+            return(resps)
+        else:
+            custrecord = records[0][0]
+
+        print(custrecord)
+        print(type(custrecord))
+        #Next step is to post this data to customer creation and wait for its make_response
+        #Based on the response send response to front end
+        del custrecord['fatcalguserid']
+        del custrecord['fatcaoctime']
+        del custrecord['fatcalmtime']   
+        del custrecord['fatcaentityid']
+        del custrecord['ucclguserid']
+        del custrecord['uccoctime']   
+        del custrecord['ucclmtime']   
+        del custrecord['uccentityid']
+        del custrecord['clientnomineedob']
+        del custrecord['clientnomineeaddress']
+
+        processadd = custrecord['clientadd1']+custrecord['clientadd2']+custrecord['clientadd3']
+
+        custrecord['clientadd1'] = processadd[:30]
+        if (len(processadd) > 30):
+            custrecord['clientadd2'] = processadd[30:60]
+            if (len(processadd) > 60):
+                custrecord['clientadd3'] = processadd[60:90]
+            else:
+                custrecord['clientadd3'] = ''
+        else:
+            custrecord['clientadd2'] = custrecord['clientadd3'] = ''
+        
+        appname1 = custrecord['clientappname1'] 							#firstname
+        '''
+        if (custrecord['clientappname2'] != ''):							#middlename
+            appname1 = appname1 + ' ' + custrecord['clientappname2']		
+        if (custrecord[clientappname3] != ''):
+            appname1 = appname1 + ' ' + custrecord['clientappname3']		#lastname
+        '''
+        custrecord['clientappname1'] = appname1[:70]
+
+        url='http://127.0.0.1:8001/custcreation'
+
+        r = requests.post(url, json=custrecord)
+        if r.status_code != 100:	
+            resp = make_response(jsonify({'natstatus':'error','statusdetails':r.statusmessage}), 400)
+        else:
+            resp = make_response(jsonify({'natstatus':'success','statusdetails':"client registration successful"}), 200)
+
+    #return make_response(jsonify('ok'), 200) 
+
+
+
 def getcountryorstate(nameorcode,wantcodeorname):
     forcntry=['Afghanistan','Aland Islands','Albania','Algeria','American Samoa','Angola','Anguilla','Antarctica','Antigua And Barbuda','Argentina','Armenia','Aruba','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bermuda','Bhutan','Bolivia','Bosnia And Herzegovina','Botswana','Bouvet Island','Brazil','British Indian Ocean Territory','Brunei Darussalam','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Cape Verde','Cayman Islands','Central African Republic','Chad','Chile','China','Christmas Island','Cocos (Keeling) Islands','Colombia','Comoros','Congo','Congo The Democratic Republic Of The','Cook Islands','Costa Rica','Cote DIvoire','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominica','Dominican Republic','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Ethiopia','Falkland Islands (Malvinas)','Faroe Islands','Fiji','Finland','France','French Guiana','French Polynesia','French Southern Territories','Gabon','Gambia','Georgia','Germany','Ghana','Gibraltar','Greece','Greenland','Grenada','Guadeloupe','Guam','Guatemala','Guernsey','Guinea','Guinea-Bissau','Guyana','Haiti','Heard Island And Mcdonald Islands','Honduras','Hong Kong','Hungary','Iceland','India','Indonesia','Iran Islamic Republic Of','Iraq','Ireland','Isle Of Man','Israel','Italy','Jamaica','Japan','Jersey','Jordan','Kazakhstan','Kenya','Kiribati','Korea Democratic Peoples Republic Of','Korea Republic Of','Kuwait','Kyrgyzstan','Lao Peoples Democratic Republic','Latvia','Lebanon','Lesotho','Liberia','Libyan Arab Jamahiriya','Liechtenstein','Lithuania','Luxembourg','Macao','Macedonia The Former Yugoslav Republic of','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Marshall Islands','Martinique','Mauritania','Mauritius','Mayotte','Mexico','Micronesia Federated States Of','Moldova Republic Of','Monaco','Mongolia','Montserrat','Morocco','Mozambique','Myanmar','Namibia','Nauru','Nepal','Netherlands','Netherlands Antilles','New Caledonia','New Zealand','Nicaragua','Niger','Nigeria','Niue','Norfolk Island','Northern Mariana Islands','Norway','Oman','Pakistan','Palau','Palestinian Territory Occupied','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Pitcairn','Poland','Portugal','Puerto Rico','Qatar','Reunion','Romania','Russian Federation','Rwanda','Saint Helena','Saint Kitts And Nevis','Saint Lucia','Saint Pierre And Miquelon','Saint Vincent And The Grenadines','Samoa','San Marino','Sao Tome And Principe','Saudi Arabia','Senegal','Serbia And Montenegro','Seychelles','Sierra Leone','Singapore','Slovakia','Slovenia','Solomon Islands','Somalia','South Africa','South Georgia And The South Sandwich Islands','Spain','Sri Lanka','Sudan','Suriname','Svalbard And Jan Mayen','Swaziland','Sweden','Switzerland','Syrian Arab Republic','Taiwan, Province Of China','Tajikistan','Tanzania, United Republic Of','Thailand','Timor-Leste','Togo','Tokelau','Tonga','Trinidad And Tobago','Tunisia','Turkey','Turkmenistan','Turks And Caicos Islands','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States of America','United States Minor Outlying Islands','Uruguay','Uzbekistan','Vanuatu','Venezuela','Viet Nam','Virgin Islands, British','Virgin Islands, U.S.','Wallis And Futuna','Western Sahara','Yemen','Zambia','Zimbabwe']
     
@@ -533,3 +633,5 @@ def getcountryorstate(nameorcode,wantcodeorname):
             item = ''
 
     return item
+
+
