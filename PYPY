@@ -1,0 +1,264 @@
+##This code where we call create_user_bse is called
+del d[fatcalguserid]
+del d[fatcaoctime]
+del d[fatcalmtime]   
+del d[fatcaentityid]
+del d[ucclguserid]
+del d[ucclgoctime]   
+del d[ucclglmtime]   
+del d[ucclgentityid]
+del d[clientnomineedob]
+del d[clientnomineeaddress]
+
+
+r = requests.post(url, json=payload)
+if r.status_code != 100:	
+	resp = make_response(jsonify({'natstatus':'error','statusdetails':r.statusmessage}), 400)
+else:
+	resp = make_response(jsonify({'natstatus':'success','statusdetails':"client registration successful"}), 200)
+
+
+
+@app.route('/custcreation',methods=['GET','POST','OPTIONS'])
+def create_user_bse():
+''
+''
+	if request.method=='OPTIONS':
+		print ("inside custcreation options")
+		return 'inside custcreation options'
+	elif request.method=='POST':
+		## initialise the zeep client for order wsdl
+		client = zeep.Client(wsdl=settings.WSDL_UPLOAD_URL[settings.LIVE])
+		set_soap_logging()
+		## get the password 
+		pass_dict = soap_get_password_upload(client)
+		## prepare the user record 
+		#client_code='1234test'
+		payload=request.get_json()
+		bse_user = prepare_user_param(payload)
+		## post the user creation request
+		user_response = soap_create_user(client, bse_user, pass_dict)
+		## TODO: Log the soap request and response post the user creation request
+		if user_response.stcdtoreturn ==100:
+			#pass_dict = soap_get_password_upload(client)
+			bse_fatca = prepare_fatca_param(client_code)
+			fatca_response = soap_create_fatca(client, bse_fatca, pass_dict)
+			## TODO: Log the soap request and response post the fatca creation request
+			if fatca_response.stcdtoreturn ==100:
+				return jsonify({statuscode: 100, statusmessage: "User and Fatca record created successfully"},200)
+			else:
+				return jsonify({statuscode: fatca_response.bsesttuscode, statusmessage: fatca_response.bsesttusmsg},400)			
+		else:
+			return jsonify({statuscode: user_response.bsesttuscode, statusmessage: user_response.bsesttusmsg},400)
+
+	
+
+	
+def prepare_user_param(payload):
+
+	d=payload
+
+	param_list = [
+			('CODE', d[CLIENTCODE]),
+			('HOLDING', d[CLIENTHOLDING]),
+			('TAXSTATUS', d[CLIENTTAXSTATUS]),
+			('OCCUPATIONCODE', d[CLIENTOCCUPATIONCODE]),
+			('APPNAME1', d[CLIENTAPPNAME1]),
+			('APPNAME2', d[CLIENTAPPNAME2]),
+			('APPNAME3', d[CLIENTAPPNAME3]),
+			('DOB', d[CLIENTDOB]),
+			('GENDER', d[CLIENTGENDER]),
+			('FATHER/HUSBAND/gurdian', d[CLIENTGUARDIAN]),
+			('PAN', d[CLIENTPAN]),
+			('NOMINEE', d[CLIENTNOMINEE]),
+			('NOMINEE_RELATION', d[CLIENTNOMINEERELATION]),
+			('GUARDIANPAN', d[CLIENTGUARDIANPAN]),
+			('TYPE', d[CLIENTTYPE]),
+			('DEFAULTDP', d[CLIENTDEFAULTDP]),
+			('CDSLDPID', d[CLIENTCDSLDPID]),
+			('CDSLCLTID', d[CLIENTCDSLCLTID]),
+			('NSDLDPID', d[CLIENTNSDLDPID]),
+			('NSDLCLTID', d[CLIENTNSDLCLTID]),
+			('ACCTYPE_1', d[CLIENTACCTYPE1]),
+			('ACCNO_1', d[CLIENTACCNO1]),
+			('MICRNO_1', d[CLIENTMICRNO1]),
+			('NEFT/IFSCCODE_1', d[CLIENTIFSCCODE1]),
+			('default_bank_flag_1', d[defaultbankflag1]),
+			('ACCTYPE_2', d[CLIENTACCTYPE2]),
+			('ACCNO_2', d[CLIENTACCNO2]),
+			('MICRNO_2', d[CLIENTMICRNO2]),
+			('NEFT/IFSCCODE_2', d[CLIENTIFSCCODE2]),
+			('default_bank_flag_2', d[defaultbankflag2]),
+			('ACCTYPE_3', d[CLIENTACCTYPE3]),
+			('ACCNO_3', d[CLIENTACCNO3]),
+			('MICRNO_3', d[CLIENTMICRNO3]),
+			('NEFT/IFSCCODE_3', d[CLIENTIFSCCODE3]),
+			('default_bank_flag_3', d[defaultbankflag3]),
+			('ACCTYPE_4', d[CLIENTACCTYPE4]),
+			('ACCNO_4', d[CLIENTACCNO4]),
+			('MICRNO_4', d[CLIENTMICRNO4]),
+			('NEFT/IFSCCODE_4', d[CLIENTIFSCCODE4]),
+			('default_bank_flag_4', d[defaultbankflag4]),
+			('ACCTYPE_5', d[CLIENTACCTYPE5]),
+			('ACCNO_5', d[CLIENTACCNO5]),
+			('MICRNO_5', d[CLIENTMICRNO5]),
+			('NEFT/IFSCCODE_5', d[CLIENTIFSCCODE5]),
+			('default_bank_flag_5', d[defaultbankflag5]),
+			('CHEQUENAME', d[CLIENTCHEQUENAME5]),
+			('ADD1', d[CLIENTADD1] ),
+			('ADD2', d[CLIENTADD2]),
+			('ADD3', d[CLIENTADD3]),
+			('CITY', d[CLIENTCITY]),
+			('STATE', d[CLIENTSTATE]),
+			('PINCODE', d[CLIENTPINCODE]),
+			('COUNTRY', d[CLIENTCOUNTRY]),
+			('RESIPHONE', d[CLIENTRESIPHONE]),
+			('RESIFAX', d[CLIENTRESIFAX]),
+			('OFFICEPHONE', d[CLIENTOFFICEPHONE]),
+			('OFFICEFAX', d[CLIENTOFFICEFAX]),
+			('EMAIL', d[CLIENTEMAIL]),
+			('COMMMODEd[CLIENTPAN2]''),
+			('PAN3', d[CLIENTPAN3]),
+			('MAPINNO', d[MAPINNO]),
+			('CM_FORADD1', d[CM_FORADD1]),
+			('CM_FORADD2', d[CM_FORADD2]),
+			('CM_FORADD3', d[CM_FORADD3]),
+			('CM_FORCITY', d[CM_FORCITY]),
+			('CM_FORPINCODE', d[CM_FORPINCODE]),
+			('CM_FORSTATE', d[CM_FORSTATE]),
+			('CM_FORCOUNTRY', d[CM_FORCOUNTRY]),
+			('CM_FORRESIPHONE', d[CM_FORRESIPHONE]),
+			('CM_FORRESIFAX', d[CM_FORRESIFAX]),
+			('CM_FOROFFPHONE', d[CM_FOROFFPHONE]),
+			('CM_FOROFFFAX', d[CM_FOROFFFAX]),
+			('CM_MOBILE', d[CM_MOBILE]),
+		]
+	
+		
+def prepare_fatca_param(payload):
+
+	d=payload
+				
+	param_list = [
+			('PAN_RP', d[PAN_RP]),
+			('PEKRN', d[PEKRN]),
+			('INV_NAME', d[INV_NAME]),
+			('DOB', d[DOB]),
+			('FR_NAME', d[FR_NAME]),
+			('SP_NAME', d[SP_NAME]),
+			('TAX_STATUS', d[TAX_STATUS]),
+			('DATA_SRC', d[DATA_SRC]),
+			('ADDR_TYPE', d[ADDR_TYPE]),
+			('PO_BIR_INC', d[PO_BIR_INC]),
+			('CO_BIR_INC', d[CO_BIR_INC]),
+			('TAX_RES1', d[TAX_RES1]),
+			('TPIN1', d[TPIN1]),
+			('ID1_TYPE', d[ID1_TYPE]),
+			('TAX_RES2', d[TAX_RES2]),
+			('TPIN2', d[TPIN2]),
+			('ID2_TYPE', d[ID2_TYPE]),
+			('TAX_RES3', d[TAX_RES3]),
+			('TPIN3', d[TPIN3]),
+			('ID3_TYPE', d[ID3_TYPE]),
+			('TAX_RES4', d[TAX_RES4]),
+			('TPIN4', d[TPIN4]),
+			('ID4_TYPE', d[ID4_TYPE]),
+			('SRCE_WEALT', d[SRCE_WEALT]),
+			('CORP_SERVS', d[CORP_SERVS]),
+			('INC_SLAB', d[INC_SLAB]),
+			('NET_WORTH', d[NET_WORTH]),
+			('NW_DATE', d[NW_DATE]),
+			('PEP_FLAG', d[PEP_FLAG]),
+			('OCC_CODE', d[OCC_CODE]),
+			('OCC_TYPE', d[OCC_TYPE]),
+			('EXEMP_CODE', d[EXEMP_CODE]),
+			('FFI_DRNFE', d[FFI_DRNFE]),
+			('GIIN_NO', d[GIIN_NO]),
+			('SPR_ENTITY', d[SPR_ENTITY]),
+			('GIIN_NA', d[GIIN_NA]),
+			('GIIN_EXEMC', d[GIIN_EXEMC]),
+			('NFFE_CATG', d[NFFE_CATG]),
+			('ACT_NFE_SC', d[ACT_NFE_SC]),
+			('NATURE_BUS', d[NATURE_BUS]),
+			('REL_LISTED', d[REL_LISTED]),
+			('EXCH_NAME', d[EXCH_NAME]),
+			('UBO_APPL', d[UBO_APPL]),
+			('UBO_COUNT', d[UBO_COUNT]),
+			('UBO_NAME', d[UBO_NAME]),
+			('UBO_PAN', d[UBO_PAN]),
+			('UBO_NATION', d[UBO_NATION]),
+			('UBO_ADD1', d[UBO_ADD1]),
+			('UBO_ADD2', d[UBO_ADD2]),
+			('UBO_ADD3', d[UBO_ADD3]),
+			('UBO_CITY', d[UBO_CITY]),
+			('UBO_PIN', d[UBO_PIN]),
+			('UBO_STATE', d[UBO_STATE]),
+			('UBO_CNTRY', d[UBO_CNTRY]),
+			('UBO_ADD_TY', d[UBO_ADD_TY]),
+			('UBO_CTR', d[UBO_CTR]),
+			('UBO_TIN', d[UBO_TIN]),
+			('UBO_ID_TY', d[UBO_ID_TY]),
+			('UBO_COB', d[UBO_COB]),
+			('UBO_DOB', d[UBO_DOB),
+			('UBO_GENDER', d[UBO_GENDER]),
+			('UBO_FR_NAM', d[UBO_FR_NAM]),
+			('UBO_OCC', d[UBO_OCC]),
+			('UBO_OCC_TY', d{UBO_OCC_TY]),
+			('UBO_TEL', d[UBO_TEL]),
+			('UBO_MOBILE', d[UBO_MOBILE]),
+			('UBO_CODE', d[UBO_CODE]),
+			('UBO_HOL_PC', d[UBO_HOL_PC]),
+			('SDF_FLAG', d[SDF_FLAG]),
+			('UBO_DF', d[UBO_DF]),
+			('AADHAAR_RP', d[AADHAAR_RP]),
+			('NEW_CHANGE', d[NEW_CHANGE]),
+			('LOG_NAME',d[LOG_NAME]),
+			('DOC1', d[DOC1]),
+			('DOC2', d[DOC2]),
+		]
+	
+	
+	
+def soap_create_user(client, user_param, pass_dict):
+
+	response = response.split('|')
+	status = response[0]
+	if (status == '100'):
+		# User creation successful
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=200}
+		pass
+	else:		
+		raise Exception(
+			"BSE error 644: User creation unsuccessful: %s" % response[1]
+		)
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=400}
+		
+		
+
+def soap_create_fatca(client, fatca_param, pass_dict):
+
+
+	response = response.split('|')
+	status = response[0]
+	if (status == '100'):
+		# Fatca creation successful
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=200}
+		
+	else:
+		raise Exception(
+			"BSE error 645: Fatca creation unsuccessful: %s" % response[1]
+		)
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=400}
+		
+		
+	response = response.split('|')
+	status = response[0]
+	if (status == '100'):
+		# User creation successful
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=200}
+		
+	else:		
+		raise Exception(
+			"BSE error 644: User creation unsuccessful: %s" % response[1]
+		)
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn=400}
