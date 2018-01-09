@@ -1,4 +1,7 @@
-##This code where we call create_user_bse is called
+def xstr(s):
+    return '' if s is None else str(s)
+
+##This code where we call create_user_bse is called	
 del d[fatcalguserid]
 del d[fatcaoctime]
 del d[fatcalmtime]   
