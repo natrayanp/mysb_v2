@@ -136,7 +136,8 @@ def registdetfetch():
             
             clientpincode =  rec['clientpincode']
             print('pincode to send :',rec['clientpincode'])            
-            clientcountry = getcountryorstate(rec['clientcountry'],'ucccnname')
+            clientcountry = rec['clientcountry']
+            #clientcountry = getcountryorstate(rec['clientcountry'],'ucccnname')
             
           
 
@@ -148,6 +149,7 @@ def registdetfetch():
                 clientforstate =  rec['cm_forstate']
                 #clientforcountry =  rec['cm_forcountry']
                 
+
                 clientforcountry = getcountryorstate(rec['cm_forcountry'],'ucccnname')
                 #forcntry[ucccncode.index(rec['cm_forcountry'])]
                 clientforpin =  rec['cm_forpincode']
@@ -194,19 +196,23 @@ def registdetfetch():
             clientincslb = rec['inc_slab']
             clientpobir = rec['po_bir_inc']
             clientcobir = rec['co_bir_inc']
-            clienttaxrescntry1 = getcountryorstate(rec['tax_res1'],'fatcnname')
+            clienttaxrescntry1 = rec['tax_res1']
+            #clienttaxrescntry1 = getcountryorstate(rec['tax_res1'],'fatcnname')
             #forcntry[ucccncode.index(rec['tax_res1'])]
             clienttaxid1 = rec['tpin1']
             clienttaxidtype1 = rec['id1_type']
-            clienttaxrescntry2 = getcountryorstate(rec['tax_res2'],'fatcnname')
+            clienttaxrescntry2 = rec['tax_res2']
+            #clienttaxrescntry2 = getcountryorstate(rec['tax_res2'],'fatcnname')
             #forcntry[ucccncode.index(rec['tax_res2'])]
             clienttaxid2 = rec['tpin2']
             clienttaxidtype2 = rec['id2_type']
-            clienttaxrescntry3 = getcountryorstate(rec['tax_res3'],'fatcnname')
+            clienttaxrescntry3 = rec['tax_res3']
+            #clienttaxrescntry3 = getcountryorstate(rec['tax_res3'],'fatcnname')
             #forcntry[ucccncode.index(rec['tax_res3'])]
             clienttaxid3 = rec['tpin3']
             clienttaxidtype3 = rec['id3_type']
-            clienttaxrescntry4 = getcountryorstate(rec['tax_res4'],'fatcnname')
+            clienttaxrescntry4 = rec['tax_res4']
+            #clienttaxrescntry4 = getcountryorstate(rec['tax_res4'],'fatcnname')
             #forcntry[ucccncode.index(rec['tax_res4'])]
             clienttaxid4 = rec['tpin4']
             clienttaxidtype4 = rec['id4_type']
@@ -278,19 +284,19 @@ def dtlfrmsave():
 
 
         if data['clientdob'] == 'None':
-            regisdbdata['clientdob'] = '01-01-1800'
-            fatcadbdata['dob'] = '01-01-1800'
+            regisdbdata['clientdob'] = '01/01/1800'
+            fatcadbdata['dob'] = '01/01/1800'
             print('correctly inside elif  none string')
         elif data['clientdob'] == None:
-            regisdbdata['clientdob'] = '01-01-1800'
-            fatcadbdata['dob'] = '01-01-1800'
+            regisdbdata['clientdob'] = '01/01/1800'
+            fatcadbdata['dob'] = '01/01/1800'
             print('correctly inside elif  none')
         elif data['clientdob']:
             regisdbdata['clientdob'] = data['clientdob']
             fatcadbdata['dob'] = data['clientdob']
         else:
-            regisdbdata['clientdob'] = '01-01-1800'
-            fatcadbdata['dob'] = '01-01-1800'
+            regisdbdata['clientdob'] = '01/01/1800'
+            fatcadbdata['dob'] = '01/01/1800'
             print('correctly inside else')
 
         #regisdbdata['clientdob'] = (item or NULL if data['clientdob'])
@@ -318,8 +324,8 @@ def dtlfrmsave():
 
         regisdbdata['clientpincode'] = data['clientpincode']
 
-        
-        regisdbdata['clientcountry'] = getcountryorstate(data['clientcountry'],'ucccncode')
+        regisdbdata['clientcountry'] = data['clientcountry']
+        #regisdbdata['clientcountry'] = getcountryorstate(data['clientcountry'],'ucccncode')
         #ucccncode[forcntry.index(data['clientcountry'])]
         
         regisdbdata['cm_foradd1'] = data['clientforinadd1']
@@ -329,6 +335,7 @@ def dtlfrmsave():
         regisdbdata['cm_forstate'] = data['clientforstate']
 
 
+        #regisdbdata['cm_forcountry'] = data['clientforcountry']
         regisdbdata['cm_forcountry'] = getcountryorstate(data['clientforcountry'],'ucccncode')
         #ucccncode[forcntry.index(data['clientforcountry'])]
 
@@ -384,19 +391,23 @@ def dtlfrmsave():
         print('########################')
         fatcadbdata['po_bir_inc'] = data['clientpobir']
         fatcadbdata['co_bir_inc'] = data['clientcobir']
-        fatcadbdata['tax_res1'] = getcountryorstate(data['clienttaxrescntry1'],'fatcncode')
+        fatcadbdata['tax_res1'] = data['clienttaxrescntry1']
+        #fatcadbdata['tax_res1'] = getcountryorstate(data['clienttaxrescntry1'],'fatcncode')
         #ucccncode[forcntry.index(data['clienttaxrescntry1'])]
         fatcadbdata['tpin1'] = data['clienttaxid1']
         fatcadbdata['id1_type'] = data['clienttaxidtype1']
-        fatcadbdata['tax_res2'] = getcountryorstate(data['clienttaxrescntry2'],'fatcncode')
+        fatcadbdata['tax_res2'] = data['clienttaxrescntry2']
+        #fatcadbdata['tax_res2'] = getcountryorstate(data['clienttaxrescntry2'],'fatcncode')
         #ucccncode[forcntry.index(data['clienttaxrescntry2'])]
         fatcadbdata['tpin2'] = data['clienttaxid2']
         fatcadbdata['id2_type'] = data['clienttaxidtype2']
-        fatcadbdata['tax_res3'] =  getcountryorstate(data['clienttaxrescntry3'],'fatcncode')
+        fatcadbdata['tax_res3'] =  data['clienttaxrescntry3']
+        #fatcadbdata['tax_res3'] =  getcountryorstate(data['clienttaxrescntry3'],'fatcncode')
         #ucccncode[forcntry.index(data['clienttaxrescntry3'])]
         fatcadbdata['tpin3'] = data['clienttaxid3']
         fatcadbdata['id3_type'] = data['clienttaxidtype3']
-        fatcadbdata['tax_res4'] =  getcountryorstate(data['clienttaxrescntry4'],'fatcncode')
+        fatcadbdata['tax_res4'] =  data['clienttaxrescntry4']
+        #fatcadbdata['tax_res4'] =  getcountryorstate(data['clienttaxrescntry4'],'fatcncode')
         #ucccncode[forcntry.index(data['clienttaxrescntry4'])]
         fatcadbdata['tpin4'] = data['clienttaxid4']
         fatcadbdata['id4_type'] = data['clienttaxidtype4']
@@ -547,7 +558,14 @@ def regisandfatcsubmit():
             appname1 = appname1 + ' ' + custrecord['clientappname3']		#lastname
         '''
         custrecord['clientappname1'] = appname1[:70]
+        
+        
+        custrecord['clientdob'] = (datetime.strptime(custrecord['clientdob'], '%Y-%m-%d').date()).strftime('%d/%m/%Y')
+        custrecord['dob'] = custrecord['clientdob']
+        #(datetime.strptime(custrecord['clientdob'], '%Y-%m-%d').date()).strftime('%d/%m/%Y')
+        
 
+        #All formating should be done above
         for key, value in custrecord.items():
             custrecord[key] = '' if value is None else str(value)
 

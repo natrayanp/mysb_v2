@@ -21,7 +21,7 @@ def create_user_bse():
 		#userid,entityid=jwtnoverify.validatetoken(request)
 		print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 		payload= request.get_json()
-		payload=json.loads(payload)
+		#payload=json.loads(payload)
 		print(payload)
 		
 		#clientdata,fatcadata=custdatavalidation(payload)
@@ -147,7 +147,7 @@ def prepare_user_param(payload):
 		('CITY', d['clientcity']),
 		('STATE', d['clientstate']),
 		('PINCODE', d['clientpincode']),
-		('COUNTRY', d['clientcountry']),					#Country name to be sent intead of code
+		('COUNTRY', d['clientcountry']),
 		('RESIPHONE', d['clientresiphone']),
 		('RESIFAX', d['clientresifax']),
 		('OFFICEPHONE', d['clientofficephone']),
@@ -162,7 +162,7 @@ def prepare_user_param(payload):
 		('CM_FORCITY', d['cm_forcity']),
 		('CM_FORPINCODE', d['cm_forpincode']),
 		('CM_FORSTATE', d['cm_forstate']),
-		('CM_FORCOUNTRY', d['cm_forcountry']),					#Country name to be sent intead of code
+		('CM_FORCOUNTRY', d['cm_forcountry']),
 		('CM_FORRESIPHONE', d['cm_forresiphone']),
 		('CM_FORRESIFAX', d['cm_forresifax']),
 		('CM_FOROFFPHONE', d['cm_foroffphone']),
@@ -494,13 +494,13 @@ def soap_create_user(client, user_param, pass_dict):
 	status = response[0]
 	if (status == '100'):
 		# User creation successful
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:200}
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'200'}
 		pass
 	else:		
 		raise Exception(
 			"BSE error 644: User creation unsuccessful: %s" % response[1]
 		)
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:400}
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'400'}
 
 
 ## fire SOAP query to craete fatca record of user on bsestar
@@ -521,13 +521,13 @@ def soap_create_fatca(client, fatca_param, pass_dict):
 	status = response[0]
 	if (status == '100'):
 		# Fatca creation successful
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:200}
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'200'}
 		
 	else:
 		raise Exception(
 			"BSE error 645: Fatca creation unsuccessful: %s" % response[1]
 		)
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:400}
+		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'400'}
 
 	
 
