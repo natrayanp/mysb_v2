@@ -63,7 +63,7 @@ def mainnotification():
                 Payload=json.dumps({'module':'dashboard',lazyloadid': lazyloadid,'userid':userid,'entityid',entityid})
         )
             '''
-            r = requests.post("http://0.0.0.0:8002/notiprocess", data=json.dumps({'module':'dashboard','lazldid': lazyloadid,'userid':userid,'entityid':entityid}))
+            r = notiprocess(json.dumps({'module':'dashboard','lazldid': lazyloadid,'userid':userid,'entityid':entityid}))
             print(r.text)
             
 
@@ -146,6 +146,10 @@ def chkifalldone(con,cur,command,lazyloadid,userid,entityid):
     else:
         return ''
 
+
+
+def notiprocess(data):
+    print(data)
 
 def mydbfunc(con,cur,command):
     try:

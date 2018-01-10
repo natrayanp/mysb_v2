@@ -40,17 +40,17 @@ def create_user_bse():
 		## post the user creation request
 		user_response = soap_create_user(client, bse_user, pass_dict)
 		## TODO: Log the soap request and response post the user creation request
-		if user_response.stcdtoreturn ==100:
+		if user_response['bsesttuscode'] == '100':
 			#pass_dict = soap_get_password_upload(client)
-			bse_fatca = prepare_fatca_param(client_code)
+			bse_fatca = prepare_fatca_param(payload)
 			fatca_response = soap_create_fatca(client, bse_fatca, pass_dict)
 			## TODO: Log the soap request and response post the fatca creation request
-			if fatca_response.stcdtoreturn ==100:
-				return jsonify({statuscode: 100, statusmessage: "User and Fatca record created successfully"},200)
+			if fatca_response['bsesttuscode'] == '100':
+				return json.dumps({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': "User and Fatca record created successfully"})
 			else:
-				return jsonify({statuscode: fatca_response.bsesttuscode, statusmessage: fatca_response.bsesttusmsg},400)			
+				return json.dumps({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': fatca_response['bsesttusmsg']})			
 		else:
-			return jsonify({statuscode: user_response.bsesttuscode, statusmessage: user_response.bsesttusmsg},400)
+			return json.dumps({'statuscode': user_response['bsesttuscode'], 'statusmessage': user_response['bsesttusmsg']})
 
 		'''
 		pass_dict = soap_get_password_upload(client)
@@ -93,7 +93,7 @@ def prepare_user_param(payload):
 	d=payload
 	print(type(d))
 	print( d['clientcode'])
-	'''
+	
 	param_list = [
 		('CODE', d['clientcode']),
 		('HOLDING', d['clientholding']),
@@ -153,7 +153,9 @@ def prepare_user_param(payload):
 		('OFFICEPHONE', d['clientofficephone']),
 		('OFFICEFAX', d['clientofficefax']),
 		('EMAIL', d['clientemail']),
-		('COMMMODE',d['clientpan2']),
+		('COMMMODE',d['clientcommmode']),
+		('DIVPAYMODE', d['clientdivpaymode']),
+		('PAN2', d['clientpan2']),
 		('PAN3', d['clientpan3']),
 		('MAPINNO', d['mapinno']),
 		('CM_FORADD1', d['cm_foradd1']),
@@ -248,6 +250,7 @@ def prepare_user_param(payload):
 		('CM_FOROFFFAX', ''),
 		('CM_MOBILE', '9677628897'),
 	]
+	'''
 
 	# prepare the param field to be returned
 	user_param = ''
@@ -356,8 +359,8 @@ def prepare_fatca_param(payload):
 		('AADHAAR_RP', d['aadhaar_rp']),
 		('NEW_CHANGE', d['new_change']),
 		('LOG_NAMe',d['log_name']),
-		('DOC1', d['doc1']),
-		('DOC2', d['doc2'])
+		('DOC1', d['filler1']),
+		('DOC2', d['filler2'])
 	]
 
 
@@ -494,19 +497,19 @@ def soap_create_user(client, user_param, pass_dict):
 	status = response[0]
 	if (status == '100'):
 		# User creation successful
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'200'}
-		pass
+		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':200}
+		
 	else:		
 		raise Exception(
 			"BSE error 644: User creation unsuccessful: %s" % response[1]
 		)
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'400'}
+		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':400}
 
 
 ## fire SOAP query to craete fatca record of user on bsestar
 def soap_create_fatca(client, fatca_param, pass_dict):
-	method_url = METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
-	header_value = soap_set_wsa_headers(method_url, SVC_UPLOAD_URL[settings.LIVE])
+	method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
+	header_value = soap_set_wsa_headers(method_url, settings.SVC_UPLOAD_URL[settings.LIVE])
 	response = client.service.MFAPI(
 		'01',
 		settings.USERID[settings.LIVE],
@@ -521,13 +524,13 @@ def soap_create_fatca(client, fatca_param, pass_dict):
 	status = response[0]
 	if (status == '100'):
 		# Fatca creation successful
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'200'}
+		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':200}
 		
 	else:
 		raise Exception(
 			"BSE error 645: Fatca creation unsuccessful: %s" % response[1]
 		)
-		return {bsesttuscode: response[0], bsesttusmsg: response[1],stcdtoreturn:'400'}
+		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':400}
 
 	
 
