@@ -1,0 +1,213 @@
+{'clientcode': 'A000000001', 'clientholding': 'SI', 'clienttaxstatus': '21', 'clientoccupationcode': '04', 'clientappname1': 'natrayan p', 'clientappname2': '', 'clientappname3': '', 'clientdob': '17/01/2018', 'clientgender': 'M', 'clientguardian': '', 'clientpan': 'ABCDE6789Z', 'clientnominee': 'ananthi', 'clientnomineerelation': 'Mother', 'clientguardianpan': '', 'clienttype': 'P', 'clientdefaultdp': '', 'clientcdsldpid': '', 'clientcdslcltid': '', 'clientnsdldpid': '', 'clientnsdlcltid': '', 'clientacctype1': 'SB', 'clientaccno1': '123456789123', 'clientmicrno1': '', 'clientifsccode1': 'ALLA0212398', 'defaultbankflag1': 'Y', 'clientacctype2': '', 'clientaccno2': '', 'clientmicrno2': '', 'clientifsccode2': '', 'defaultbankflag2': '', 'clientacctype3': '', 'clientaccno3': '', 'clientmicrno3': '', 'clientifsccode3': '', 'defaultbankflag3': '', 'clientacctype4': '', 'clientaccno4': '', 'clientmicrno4': '', 'clientifsccode4': '', 'defaultbankflag4': '', 'clientacctype5': '', 'clientaccno5': '', 'clientmicrno5': '', 'clientifsccode5': '', 'defaultbankflag5': '', 'clientchequename5': '', 'clientadd1': 'b3f3 psris atr 43 jikj risd mw', 'clientadd2': 'divilarigjhjdy cujeeai', 'clientadd3': '', 'clientcity': 'chennai', 'clientstate': 'TN', 'clientpincode': '566896', 'clientcountry': 'India', 'clientresiphone': '', 'clientresifax': '', 'clientofficephone': '', 'clientofficefax': '', 'clientemail': 'natrayanp@gmail.com', 'clientcommmode': 'M', 'clientdivpaymode': '02', 'clientpan2': '', 'clientpan3': '', 'mapinno': '', 'cm_foradd1': 'foreign address one is any address you t', 'cm_foradd2': 'foreign address 2 is what you', 'cm_foradd3': '', 'cm_forcity': 'mycity', 'cm_forpincode': '526598', 'cm_forstate': 'mystate', 'cm_forcountry':'004', 'cm_forresiphone': '', 'cm_forresifax': '', 'cm_foroffphone': '', 'cm_forofffax': '', 'cm_mobile': '1234567890', 'pan_rp': '1234567890', 'pekrn': '', 'inv_name': 'natrayan p', 'dob': '01/17/2018', 'fr_name': '', 'sp_name': '', 'tax_status': '21', 'data_src': 'E', 'addr_type': '1', 'po_bir_inc': 'placdofbir', 'co_bir_inc': 'Singapore', 'tax_res1': 'SG', 'tpin1': 'j45686688', 'id1_type': 'D', 'tax_res2': '', 'tpin2': '', 'id2_type': '', 'tax_res3': '', 'tpin3': '', 'id3_type': '', 'tax_res4': '', 'tpin4': '', 'id4_type': '', 'srce_wealt': '04', 'corp_servs': '', 'inc_slab': '33', 'net_worth': '', 'nw_date': '', 'pep_flag': 'Y', 'occ_code': '04', 'occ_type': 'S', 'exemp_code': '', 'ffi_drnfe': '', 'giin_no': '', 'spr_entity': '', 'giin_na': '', 'giin_exemc': '', 'nffe_catg': '', 'act_nfe_sc': '', 'nature_bus': '', 'rel_listed': '', 'exch_name': 'O', 'ubo_appl': 'N', 'ubo_count': '', 'ubo_name': '', 'ubo_pan': '', 'ubo_nation': '', 'ubo_add1': '', 'ubo_add2': '', 'ubo_add3': '', 'ubo_city': '', 'ubo_pin': '', 'ubo_state': '', 'ubo_cntry': '', 'ubo_add_ty': '', 'ubo_ctr': '', 'ubo_tin': '', 'ubo_id_ty': '', 'ubo_cob': '', 'ubo_dob': '', 'ubo_gender': '', 'ubo_fr_nam': '', 'ubo_occ': '', 'ubo_occ_ty': '', 'ubo_tel': '', 'ubo_mobile': '', 'ubo_code': '', 'ubo_hol_pc': '', 'sdf_flag': 'N', 'ubo_df': 'N', 'aadhaar_rp': '', 'new_change': 'N', 'log_name': 'logname.log', 'filler1': '', 'filler2': ''}
+
+
+
+
+Microsoft Windows [Version 6.1.7601]
+Copyright (c) 2009 Microsoft Corporation.  All rights reserved.
+
+C:\Users\natrayanpalani.REG1>putty -ssh -l user -P 33910 node23.codenvy.io -i Desktop\key
+'putty' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\Users\natrayanpalani.REG1>{'bsesttusmsg': 'RECORD UPDATED SUCCESSFULLY', 'stcdtoreturn': 200, 'bsesttuscode': '100'}
+
+
+stcdtoreturn
+
+
+
+
+NAT1234|SI|01|01|appname1|||04/10/1980|M||ARYNJ1340H||||P||||||SB|1234567654||ICIC0006036|Y||||||||||||||||
+||||||add1|add2|add3|city|TN|600032|India|||||email@gmail.com|M|02|||||||||||||||9677628897
+
+
+A000000001|SI|21|04|natrayan p|||17/01/2018|1||1234567890|ananthi|Mother||P||||||SB|123456789123||ALLA02123
+98|Y||||||||||||||||||||||b3f3 psris atr 43 jikj risd mw|divilarigjhjdy cujeeai||chennai|TN|566896|India|||||natrayanp@gmail.com||||foreign address one is any address you t|foreign address 2 is what you||mycity|526598|mystate|004|||||12345678
+90
+
+
+
+
+
+ssh ip172-18-0-13-b9aspqv2774g00bm2s4g@direct.labs.play-with-docker.com
+
+
+filler1     varchar(30) ,
+filler2     varchar(30) ,
+
+
+1234567890||natrayan p|17/01/2018|||21|E|1|placdofbir|Singapore|Singapore|j45686688|D||||||||||04||33|||Y|0
+4|S||||||||||||N||||||||||||||||||||||||||N|N|||||
+
+
+create table notifimaster(
+    nfmid               varchar(15) NOT NULL CONSTRAINT nfmid PRIMARY KEY , 
+	nfname				varchar(30)      			--This is new filed need to identify the notifications for a process based on this all small case to be done in notifiuser as well
+    nfmuserid 		    varchar(100),
+    nfmscreenid			varchar(10),
+    nfmessage			varchar(1000) NOT NULL,
+    nfmsgtype			varchar(15) NOT NULL,
+    nfmprocessscope      varchar(1) NOT NULL,  --DAY-D, SESSION-S, EVERYPAGE REFERESH-P
+    nfmnxtact			varchar(1) NOT NULL, --Yes or no
+    nfmnxtactmsg		varchar(100),
+    nfmnxtactnavtyp		varchar(10) NOT NULL,
+    nfmnxtactnavdest		varchar(30) NOT NULL,
+    nfmstartdt			timestamp NOT null,
+    nfmenddt				timestamp,
+    nfmoctime			timestamp NOT NULL,
+	nfmlmtime			timestamp NOT NULL,
+	nfmentityid          varchar(10) NOT NULL
+)
+
+
+userlogin.lguserstatus --> R-Registration in progress, U-Registration done image upload pending,P - Registration and upload done waiting to be active, A- Active, I-Deleteduser
+
+command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregistration',%s,'dashboard','please complete user registration','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
+
+###################################################
+import multiprocessing
+import registrationnotifications
+
+@app.route('/notiprocess',methods=['GET','POST','OPTIONS'])
+
+	
+	        #start the processing multiprocess
+            #QUERY THAT FETCHES ALL TO BE PROCESSED.  PASS nfuuid,nfuuserid,nfuentityid TO THE SPAWNED PROCESS TO PROCESS THEM
+            '''
+            cmdqry = 'SELECT nfuuid,nfname,nfuuserid,nfuentityid FROM notifiuser WHERE nfustatus = 'P' AND nfprocessscope NOT IN ('D','S') AND nfuuserid = %s AND nfuentityid = %s'
+            cmdqry = cmdqry + 'UNION'
+            cmdqry = cmdqry + 'SELECT nfuuid,nfname,nfuuserid,nfuentityid FROM notifiuser WHERE nfustatus = 'P' AND nfprocessscope IN ('D','S') AND nfuprocesbypgldsvc = 'Y' AND nfuuserid = %s AND nfuentityid = %s;'
+                        
+            command = cur.mogrify(cmdqry,(userid,entityid,userid,entityid,))			
+			cur, dbqerr = db.mydbfunc(con,cur,command)
+			rowcount = cur.rowcount
+
+			if rowcount != 0:
+				records=[]
+				for record in cur:  
+					print('inside for')
+					print(record)             
+					records.append(record)			
+				hvrecformulti = True
+			elif rowcount == 0:
+				#just to make sure the if condition fails
+				hvrecformulti = False
+				pass
+			else:
+				hvrecformulti = False
+				pass
+			
+			if hvrecformulti :
+				
+				#We need to use the pool
+				for i in records:				
+					p=multiprocessing.Process(target=notiprocessingfunctions(uid,name,userid,entityid))
+				
+			
+			
+            '''
+
+            #start the processing multiprocess END
+
+
+from allprocessing import app
+from flask import redirect, request,make_response
+from datetime import datetime, timedelta
+from flask import jsonify
+from allprocessing import dbfunc as db
+
+import psycopg2
+import jwt
+import requests
+import json
+
+
+def notiprocessingfunctions(uid,name,userid,entityid):
+
+	if name == 'pendingregistration':		
+		userstatus = getuserstatus(userid,entityid)
+		if userstatus != 'R':
+			deletenotification(userid,entityid,name,uid)
+		elif userstatus == 'R':
+			updatenotificationstatus(userid,entityid,uid)
+		else
+			pass
+	
+	if name == 'pendingregisupload':
+		userstatus = getuserstatus(userid,entityid)
+		if userstatus != 'U':
+			deletenotification(userid,entityid,name,uid)
+		elif name == 'pendingregistration':
+			updatenotificationstatus(userid,entityid,uid)
+		else
+			pass
+	'''
+	if name =='somethingsomething'
+		do something something
+	'''
+
+def deletenotification(userid,entityid,name,uid):
+	command = cur.mogrify("DELETE FROM notifimaster WHERE nfmuserid = %s AND nfmentityid = %s AND nfname= %s AND nfmid = %s;" ,(userid,entityid,name,uid,))
+	cur, dbqerr = db.mydbfunc(con,cur,command)
+	print(dbqerr['natstatus'])
+	if cur.closed == True:
+		if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+			dbqerr['statusdetails']="loginuser Fetch failed"
+		resp = make_response(jsonify(dbqerr), 400)
+		return(resp)
+	else:
+		pass
+	
+	command = cur.mogrify("DELETE FROM notifiuser WHERE nfuuserid = %s AND nfuentityid = %s AND nfuname= %s AND nfumid = %s;" ,(userid,entityid,name,uid,))
+	cur, dbqerr = db.mydbfunc(con,cur,command)
+	print(dbqerr['natstatus'])
+	if cur.closed == True:
+		if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+			dbqerr['statusdetails']="loginuser Fetch failed"
+		resp = make_response(jsonify(dbqerr), 400)
+		return(resp)
+	else:
+		pass
+
+def updatenotificationstatus(userid,entityid,uid):
+	command = cur.mogrify("UPDATE notifiuser SET nfustatus = 'C', nfmlmtime = CURRENT_TIMESTAMP WHERE nfuuserid = %s AND nfuentityid = %s AND nfumid = %s;",(userid,entityid,uid,))                        
+	cur, dbqerr = db.mydbfunc(con,cur,command)
+	print(dbqerr['natstatus'])
+	if cur.closed == True:
+		if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+			dbqerr['statusdetails']="pf Fetch failed"
+		resp = make_response(jsonify(dbqerr), 400)
+		return(resp)
+	con.commit()                  
+	print(cur)
+	print('consider insert or update is successful')
+
+def getuserstatus(userid,entityid):
+		#This is to be moved to a configurable place
+		conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+		#This is to be moved to a configurable place
+		con=psycopg2.connect(conn_string)
+		cur = con.cursor()
+
+		command = cur.mogrify("SELECT lguserstatus FROM userlogin WHERE lguserid = %s AND lgentityid = %s;" ,(userid,entityid,))
+		cur, dbqerr = db.mydbfunc(con,cur,command)
+		print(cur)
+		print(dbqerr)
+		print(type(dbqerr))
+		print(dbqerr['natstatus'])
+		if cur.closed == True:
+			if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+				dbqerr['statusdetails']="loginuser Fetch failed"
+			resp = make_response(jsonify(dbqerr), 400)
+			return(resp)
+		else:
+			pass
+
+		records=[]
+		for record in cur:  
+			print('inside for')
+			print(record)             
+			records.append(record)
+		
+		return records[0]
