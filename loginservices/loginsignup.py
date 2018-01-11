@@ -328,7 +328,7 @@ def signupf():
 
             #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START
 
-            command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,%s,'dashboard','please complete user registration','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
+            command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregistration',%s,'dashboard','please complete user registration','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
             cur, dbqerr = db.mydbfunc(con,cur,command)
             print(dbqerr['natstatus'])
             if cur.closed == True:

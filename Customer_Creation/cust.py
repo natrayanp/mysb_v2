@@ -46,11 +46,11 @@ def create_user_bse():
 			fatca_response = soap_create_fatca(client, bse_fatca, pass_dict)
 			## TODO: Log the soap request and response post the fatca creation request
 			if fatca_response['bsesttuscode'] == '100':
-				return json.dumps({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': "User and Fatca record created successfully"})
+				return make_response(jsonify({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': "User and Fatca record created successfully"}),200)
 			else:
-				return json.dumps({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': fatca_response['bsesttusmsg']})			
+				return make_response(jsonify({'statuscode': fatca_response['bsesttuscode'], 'statusmessage': fatca_response['bsesttusmsg']}),400)
 		else:
-			return json.dumps({'statuscode': user_response['bsesttuscode'], 'statusmessage': user_response['bsesttusmsg']})
+			return make_response(jsonify({'statuscode': user_response['bsesttuscode'], 'statusmessage': user_response['bsesttusmsg']}),400)
 
 		'''
 		pass_dict = soap_get_password_upload(client)

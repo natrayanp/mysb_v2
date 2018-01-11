@@ -2,6 +2,8 @@ from dashboard import app
 from flask import redirect, request,make_response
 from datetime import datetime, timedelta
 from flask import jsonify
+import dashboard.notificationprocessing as np
+from dashboard import dbfunc as db
 
 import psycopg2
 import jwt
@@ -28,11 +30,12 @@ def mainnotification():
         
 
         #This is to be moved to a configurable place
-        conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+        #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
         #This is to be moved to a configurable place
-        con=psycopg2.connect(conn_string)
-        cur = con.cursor()
+        #con=psycopg2.connect(conn_string)
+        #cur = con.cursor()
 
+        con,cur=db.mydbopncon()
         print(lazyloadid)
     
 
@@ -61,11 +64,13 @@ def mainnotification():
                 FunctionName='notiprocess',
                 InvocationType='RequestResponse',
                 Payload=json.dumps({'module':'dashboard',lazyloadid': lazyloadid,'userid':userid,'entityid',entityid})
-        )
             '''
-            r = notiprocess(json.dumps({'module':'dashboard','lazldid': lazyloadid,'userid':userid,'entityid':entityid}))
-            print(r.text)
-            
+            rj={'module':'dashboard','lazldid': lazyloadid,'userid':userid,'entityid':entityid}
+            r = requests.post('http://127.0.0.1:8000/notiprocess',json = rj)
+            #r=requests.get('http://www.mocky.io/v2/5a5797022e0000b03f120260')
+            print('#################')
+            print(r.json())
+            print('#################')
 
         elif lazyloadid != 'dashboard' or lazyloadid != 'signin':
             pass
@@ -74,7 +79,7 @@ def mainnotification():
         command = cur.mogrify("select json_agg(c) from (SELECT nfumid,nfumessage,nfumsgtype FROM notifiuser WHERE nfuuserid = %s AND nfuentityid = %s AND nfuscreenid='dashboard' AND nfustatus = 'C' and nfulazyldidstatus != 'S' and nfulazyldid = %s) as c;",(userid,entityid,lazyloadid) )
         #command = cur.mogrify(";",(userid,entityid,lazyloadid) )
         print(command)
-        cur, dbqerr = mydbfunc(con,cur,command)            
+        cur, dbqerr = db.mydbfunc(con,cur,command)
         rowcount = cur.rowcount
         print(rowcount)
         if rowcount != 0:
@@ -137,7 +142,7 @@ def chkifalldone(con,cur,command,lazyloadid,userid,entityid):
     command = cur.mogrify("select count(*) FROM notifiuser WHERE nfuuserid = %s AND nfuentityid = %s AND nfulazyldidstatus != 'S' and nfulazyldid = %s;",(userid,entityid,lazyloadid,) )
     print('--------------------------------')
     print(command)
-    cur, dbqerr = mydbfunc(con,cur,command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
     record=cur.fetchall()                        
     print(record)
     print('--------------------------------')
@@ -147,9 +152,10 @@ def chkifalldone(con,cur,command,lazyloadid,userid,entityid):
         return ''
 
 
-
+'''
 def notiprocess(data):
     print(data)
+
 
 def mydbfunc(con,cur,command):
     try:
@@ -169,7 +175,7 @@ def mydbfunc(con,cur,command):
             con.close()
             
     return cur,myerror
-
+'''
 
 def validatetoken(request):
     

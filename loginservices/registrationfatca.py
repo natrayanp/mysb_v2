@@ -556,6 +556,7 @@ def regisandfatcsubmit():
             custrecord['clientadd2'] = custrecord['clientadd3'] = ''
         
         appname1 = custrecord['clientappname1'] 							#firstname
+
         '''
         if (custrecord['clientappname2'] != ''):							#middlename
             appname1 = appname1 + ' ' + custrecord['clientappname2']		
@@ -579,12 +580,44 @@ def regisandfatcsubmit():
 
         print(custrecord)
         r = requests.post(url, json=custrecord)
-        if r.status_code != '100':	
-            resp = make_response(jsonify({'natstatus':'error','statusdetails':r.statusmessage}), 400)
+        rj= json.loads(r.text)        
+        if r.status_code != 200:	
+            resp = make_response(jsonify({'natstatus':'error','statusdetails':rj['statusmessage']}), 400)
         else:
-            resp = make_response(jsonify({'natstatus':'success','statusdetails':"client registration successful"}), 200)
+            #Update userstatus to U to indicate completion of registration and pending document upload
+            command = cur.mogrify("UPDATE userlogin SET lguserstatus = 'U', lglmtime = CURRENT_TIMESTAMP WHERE lguserid = %s AND lgentityid = %s;",(uid,lgentityid,))        
+            print(command)            
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            print(dbqerr['natstatus'])
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="pf Fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            con.commit()                  
+            #print(cur)
+            print('consider insert or update is successful')
+                        
+            #INSERT NOTIFICATION ENTRY FOR PENDING REGISTRAION DOC UPLOAD START
 
-    #return make_response(jsonify('ok'), 200) 
+            command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregisupload',%s,'dashboard','please complete doc upload','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            print(dbqerr['natstatus'])
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="SIGNUP update failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            con.commit()                  
+            print(cur)
+            print('consider insert or update is successful')
+
+            #INSERT NOTIFICATION ENTRY FOR PENDING REGISTRAION DOC UPLOAD END
+
+            
+            
+            #Now send resonse back to client confirming registration success.  Nav to registration success screen
+            resp = make_response(jsonify({'natstatus':'success','statusdetails':'client registration successful'}), 200)
 
 
 
