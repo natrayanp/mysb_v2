@@ -1,0 +1,49 @@
+  1 from multiprocessing import Pool
+  2 import time
+  3
+  4 def f(x):
+  5   time.sleep(10)
+  6   print(x)
+  7   return x*x
+  8
+  9 def calls():
+ 10   print('inside call before pool')
+ 11   p = Pool(processes = 4)
+ 12   x=[1,2,3,4,5]
+ 13   print('inside call before map')
+ 14   r=p.map_async(f,x)
+ 15   print('insdie call after map and before close')
+ 16   p.close()
+ 17   return r
+ 18   print('nsid call after close before resulst')
+ 19   #print(result.get())
+ 20   print('after result')
+ 21   #return 1
+ 22
+ 23 if __name__ == '__main__':
+ 24   print('in main before calling function')
+ 25   d=calls()
+ 26   #print(d.get())
+ 27   print('after return from calls')
+ 28   print(d)
+ 29   print('in main after calling function')
+ 30   print(d.get())
+ 
+ 
+ 
+ 
+
+inside call before pool
+inside call before map
+insdie call after map and before close
+{'name': 'nat'}
+{'name': 'jyn'}
+[None, None]
+nsid call after close before resulst
+after result
+1
+23
+4
+
+5
+[1, 4, 9, 16, 25]
