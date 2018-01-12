@@ -9,6 +9,7 @@ import psycopg2
 import jwt
 import requests
 import json
+import time
 
       
 @app.route('/notification',methods=['GET','POST','OPTIONS'])
@@ -66,12 +67,17 @@ def mainnotification():
                 Payload=json.dumps({'module':'dashboard',lazyloadid': lazyloadid,'userid':userid,'entityid',entityid})
             '''
             rj={'module':'dashboard','lazldid': lazyloadid,'userid':userid,'entityid':entityid}
-            r = requests.post('http://127.0.0.1:8000/notiprocess',json = rj)
+            #r = requests.post('http://127.0.0.1:8000/notiprocess',json = rj)
             #r=requests.get('http://www.mocky.io/v2/5a5797022e0000b03f120260')
             print('#################')
-            print(r.json())
+            #print(r.json())
             print('#################')
-
+            
+            # to be deleted this is for testing only
+            command = cur.mogrify("UPDATE notifiuser SET nfulazyldid = %s,  nfulazyldidstatus = 'P';",(lazyloadid,))
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            time.sleep(10)
+            # to be deleted this is for testing only
         elif lazyloadid != 'dashboard' or lazyloadid != 'signin':
             pass
 
@@ -120,7 +126,7 @@ def mainnotification():
             command = cur.mogrify("UPDATE notifiuser SET nfulazyldidstatus = 'S' WHERE nfuuserid = %s AND nfuentityid = %s AND nfumid in (%s) and nfulazyldid = %s",(userid,entityid,qryst,lazyloadid,) )
             print(command)
             print('after final lazid update')               
-            cur, dbqerr = mydbfunc(con,cur,command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
             print(dbqerr['natstatus'])
             if cur.closed == True:
                 if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):

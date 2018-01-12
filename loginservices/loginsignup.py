@@ -340,7 +340,7 @@ def signupf():
             print(cur)
             print('consider insert or update is successful')
 
-            #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START
+            #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION END
 
             #INSERT to uccclientmaster & fatcaupload START
 
