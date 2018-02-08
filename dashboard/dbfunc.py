@@ -30,7 +30,8 @@ def mydbopncon():
         con
     except NameError:
         print("con not defined so assigning as null")
-        conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+        #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+        conn_string = "host='mysb1.c69yvsbrarzb.us-east-1.rds.amazonaws.com' dbname='mysb1db' user='natrayan' password='Nirudhi1'"
         con=psycopg2.connect(conn_string)
         cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
     else:            

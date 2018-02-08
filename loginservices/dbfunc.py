@@ -1,7 +1,8 @@
-from loginservices import app
+from .helloworld import app
 from flask import jsonify
 
 import psycopg2
+import psycopg2.extras
 
 
 def mydbfunc(con,cur,command):
@@ -30,13 +31,24 @@ def mydbopncon():
         con
     except NameError:
         print("con not defined so assigning as null")
-        conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+        #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+        conn_string = "host='mysb.cygdhnb2k7oe.ap-southeast-1.rds.amazonaws.com' dbname='mysbdb' user='natrayan' password='Nirudhi1'"
+        #conn_string = "host='mysbdb1.cygdhnb2k7oe.ap-southeast-1.rds.amazonaws.com' dbname='natrayan' user='natrayan' password='Nirudhi1'"
         con=psycopg2.connect(conn_string)
         cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        print('con and cur assigned')
     else:            
         if con.closed:
-            conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+            #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+            conn_string = "host='mysb.cygdhnb2k7oe.ap-southeast-1.rds.amazonaws.com' dbname='mysbdb' user='natrayan' password='Nirudhi1'"
+            #conn_string = "host='mysbdb1.cygdhnb2k7oe.ap-southeast-1.rds.amazonaws.com' dbname='natrayan' user='natrayan' password='Nirudhi1'"
             con=psycopg2.connect(conn_string)
             cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
     
     return con,cur
+
+def mydbcloseall(con,cur):
+#close cursor and connection before exit
+    con.commit()
+    cur.close()
+    con.close()
