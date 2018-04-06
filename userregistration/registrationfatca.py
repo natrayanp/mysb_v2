@@ -28,6 +28,7 @@ def registdetfetch():
         print("inside REGISTRATIONDETAILSFETCH GET")
         
         print((request))        
+        print(request.headers)
         userid,entityid=jwtnoverify.validatetoken(request)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         
@@ -572,7 +573,7 @@ def regisandfatcsubmit():
             print('consider insert or update is successful')
                         
             #INSERT NOTIFICATION ENTRY FOR PENDING REGISTRAION DOC UPLOAD START
-
+            
             command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregisupload',%s,'dashboard','please complete doc upload','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
             cur, dbqerr = db.mydbfunc(con,cur,command)
             print(dbqerr['natstatus'])

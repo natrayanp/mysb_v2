@@ -9,3 +9,4 @@ from userregistration import registrationfatca
 from userregistration import jwtdecodenoverify
 from userregistration import bankifsc
 from userregistration import fileupload
+from userregistration import filuploadapi

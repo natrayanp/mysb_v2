@@ -13,11 +13,11 @@ import jwt
 import requests
 import json
 import boto3
+import base64
 
 
 @app.route('/uploadfile', methods=['GET', 'POST','OPTIONS'])
 def upload_file():
-
     print('iam in new after')
     print(request)
     
@@ -124,20 +124,23 @@ def uploaded_file_list():
     
 
 
-@app.route('/uploadedfiledelete', methods=['POST'])
+@app.route('/natfiledelete', methods=['OPTIONS','POST','GET'])
 def uploaded_file_delete():
 #handles user action for deleting file
+    print('inside uploadedfiledelete above all')
+    print(request.method)
     if request.method == 'OPTIONS':
+        print('inside uploadedfiledelete OPTIONS')
         return 'ok'
     elif request.method == 'POST':
+        print('inside uploadedfiledelete POST')
+        
         payload= request.get_json()
         print(payload)
         objbucket=payload['files3bucket']
         objkey=payload['files3key']
         category=payload['filecat']
-        userid,entityid=jwtnoverify.validatetoken(request)
-
-        
+        userid,entityid=jwtnoverify.validatetoken(request)       
         s3 = boto3.client('s3')
         try:
             s3.delete_object(Bucket=objbucket, Key=objkey)
@@ -149,8 +152,7 @@ def uploaded_file_delete():
             resp = make_response(jsonify(dbqerr), 400)
             return(resp)
         else:
-            print('file deletion successful')
-        
+            print('file deletion successful')  
 
         con,cur=db.mydbopncon()
         
@@ -174,11 +176,175 @@ def uploaded_file_delete():
 
         #Delete the entry of the file from db END
 
-    respjsonstr=fetchfilelist(userid,entityid,con,cur)
+        respjsonstr=fetchfilelist(userid,entityid,con,cur,s3)
+        db.mydbcloseall(con,cur)
+        
 
-    db.mydbcloseall(con,cur)
-    return make_response(jsonify(respjsonstr), 200)
+        return make_response(jsonify(respjsonstr), 200)
+    
+    #if no processing done return error
+    dbqerr ={}
+    dbqerr['natstatus'] = "error"
+    dbqerr['statusdetails']="Fileupload master delete failed"
+    resp = make_response(jsonify(dbqerr), 400)
+    return resp
 
+
+@app.route('/uploadedfilesubmit', methods=['OPTIONS','GET'])
+def uploaded_file_submit():
+#handles user action for final submit to BSE
+    if request.method == 'OPTIONS':
+        print('options')
+        return 'ok'
+    elif request.method == 'GET':
+        print('iam inside get of uploadedfilesubmit')
+
+        '''
+        bucket='zappa-44lyjdddx'
+        key='CCITT_8.TIFF'
+        s3 = boto3.resource('s3')
+        obj = s3.Object(bucket, key)
+        fls1=obj.get()['Body'].read()
+        print(type(fls1))
+        fls=bytearray(fls1)
+        print(type(fls))
+        #f=open('myfile', 'rb')
+        files1 = {'myfiles': fls}
+        print(type(fls))
+        data1={'name':'natrayan'}
+        #r = requests.post('https://requestb.in/uznoniuz', data={"ts":time.time()})
+        #url='https://requestb.in/uznoniuz'
+        #url='http://node28.codenvy.io:37459/fileuploadapi'
+        #url='http://node28.codenvy.io:37459/fileuploadapi'
+        url='http://127.0.0.1:8000/testfileup'
+        r = requests.post(url, files=files1,data=data1)
+        print(r.text)
+        print(r)
+        print (r.status_code)
+        print (r.content)
+        '''
+        userid,entityid=jwtnoverify.validatetoken(request)
+        con,cur=db.mydbopncon()
+        
+        cmdqry = "SELECT lgclientcode FROM userlogin WHERE lguserid = %s AND lgentityid = %s"        
+        command = cur.mogrify(cmdqry,(userid,entityid,))
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        rowcount = cur.rowcount
+
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="Fileuploadsubmit data fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+        records=[]
+        if rowcount != 0:                
+            for record in cur:  
+                print('inside for')
+                print(record)             
+                records.append(record)
+        print(records)
+        clientcode = records[0]
+        
+        #clientcode='A000000001'
+
+        cmdqry = "SELECT fuplfiles3bucket,fuplfiles3key,fuplfiletype FROM fileuploadmaster WHERE fuplfilesubmitstaus != 'S' and fuplfilecat = 'E' AND fupllguserid = %s AND fuplentityid = %s"          
+        command = cur.mogrify(cmdqry,(userid,entityid,))
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        rowcount = cur.rowcount
+
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="Fileuploadsubmit data fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+        records=[]
+        if rowcount != 0:                
+            for record in cur:  
+                print('inside for')
+                print(record)             
+                records.append(record)
+
+        print(records)
+        #======delete
+        #records=['nat','kumar']
+        #======
+        reqjsons_payload={}
+        for record in records:
+            #======Uncomment
+            bucket,key,filetype = record
+            #======Uncomment
+            s3 = boto3.resource('s3')
+            obj = s3.Object(bucket, key)
+            fls1=obj.get()['Body'].read()            
+            fls=bytearray(fls1)
+
+            files_payload = {'myfiles': fls}
+            reqjsons_payload={'ClientCode':clientcode,'filetype':filetype,'publickey':'to be implemented'}     
+            
+            
+            url='http://127.0.0.1:8000/fileuploadapi'
+
+            r = requests.post(url, files=files_payload, data=reqjsons_payload)
+            rj= json.loads(r.text)
+            print(r.text)
+            print(r)
+            print (r.status_code)
+            print (r.content)
+            if r.status_code != 200:	
+                resp = make_response(jsonify({'natstatus':'error','statusdetails':r.text}), 400)
+            else:
+                print('calling bse is successful')
+                #for successful cases response is made at the end
+                #resp=make_response(jsonify({'natstatus':'error','statusdetails':r.content}), 400)
+
+    else:
+        print('No records to upload')
+        return 'No records to upload    '
+
+
+    #All successful so we are updating the user status
+    #Only time we come here is for GET request
+
+    #Update userstatus to P to indicate completion of document upload Completed
+    command = cur.mogrify("UPDATE userlogin SET lguserstatus = 'P', lglmtime = CURRENT_TIMESTAMP WHERE lguserid = %s AND lgentityid = %s;",(userid,entityid,))        
+    print(command)            
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    print(dbqerr['natstatus'])
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            dbqerr['statusdetails']="user status update after doc upload failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+    #con.commit()                  
+    #print(cur)
+    print('consider insert or update is successful')
+
+    #INSERT NOTIFICATION ENTRY FOR COMPLETION OF REGISTRAION AND DOC UPLOAD START
+    nfmid=datetime.now().strftime('%Y%m%d%H%M%S%f')
+    print('nfmid :',nfmid)
+    command = cur.mogrify("INSERT INTO notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfmprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregisupload',%s,'dashboard','Registration process completed, you can start buying','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,userid,entityid,))
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    print(dbqerr['natstatus'])
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            dbqerr['statusdetails']="docupload complete notification update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+    con.commit()                  
+    print(cur)
+    print('consider insert or update is successful')
+
+    #INSERT NOTIFICATION ENTRY FOR COMPLETION OF REGISTRAION AND DOC UPLOAD END   
+    #Now send resonse back to client confirming registration success.  Navigate to home screen
+    resp = make_response(jsonify({'natstatus':'success','statusdetails':'File upload successful'}), 200)
+    #resp = make_response('File upload successful', 200)
+    
+    #resp = 'success da nattu'
+    return resp
 
 
 
