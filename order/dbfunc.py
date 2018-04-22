@@ -1,8 +1,9 @@
-from loginservices import app
+#from loginservices import app
 from flask import jsonify
 
 import psycopg2
 import psycopg2.extras
+
 
 def mydbfunc(con,cur,command):
 
@@ -32,8 +33,11 @@ def mydbopncon():
         print("con not defined so assigning as null")
         conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
         #conn_string = "host='mysb1.c69yvsbrarzb.us-east-1.rds.amazonaws.com' dbname='mysb1db' user='natrayan' password='Nirudhi1'"
+        print("after conn_string")
         con=psycopg2.connect(conn_string)
+        print("after con")
         cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        print("after cur")
     else:            
         if con.closed:
             conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"

@@ -17,7 +17,7 @@ import time
 
 
 @app.route('/pfdatafetch',methods=['GET','POST','OPTIONS'])
-def funddatafetc1h():
+def pfdatafetch():
 #This is called by fund data fetch service
     if request.method=='OPTIONS':
         print("inside PFDATAFETCH options")
@@ -25,8 +25,6 @@ def funddatafetc1h():
 
     elif request.method=='GET':
         print("inside PFDATAFETCH GET")
-        
-
         print((request))        
         print(request.headers)
         userid,entityid=jwtnoverify.validatetoken(request)
@@ -40,7 +38,7 @@ def funddatafetc1h():
         print(cur)
         
         #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
-        command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s ) art",(userid,))
+        command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s  ORDER BY pfportfolioid) art",(userid,))
         cur, dbqerr = db.mydbfunc(con,cur,command)
         print("#########################################3")
         print(command)
@@ -60,110 +58,15 @@ def funddatafetc1h():
         #Model to follow in all fetch
         records=[]
         for record in cur:  
-            records.append(record[0])        
+            records.append(record[0])           
+
+
         
-
-
-
         print("portfolio details returned for user: "+userid)
         
         resp = json.dumps(records)
     
     return resp
-
-
-@app.route('/funddatafetch',methods=['GET','POST','OPTIONS'])
-def funddatafetch():
-#This is called by fund data fetch service
-    if request.method=='OPTIONS':
-        print("inside FUNDDATAFETCH options")
-        return make_response(jsonify('inside FUNDDATAFETCH options'), 200)  
-
-    elif request.method=='POST':
-        print("inside PFDATAFETCH GET")
-        
-        print((request))        
-        print(request.headers)
-        userid,entityid=jwtnoverify.validatetoken(request)
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        print(userid,entityid)
-        payload= request.get_json()
-        print(payload)
-        print('after')
-        con,cur=db.mydbopncon()
-
-        print(con)
-        print(cur)
-        teee='%'+payload+'%'
-        #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
-        #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(c) from (select * from webapp.fundsipdt where sipfndnatcode = a.fndnatcode ) as c) as fnsipdt from webapp.fundmaster as a where fnddisplayname like %s) art",(teee,))
-        command = cur.mogrify("select row_to_json(art) from (select a.fndnatcode,a.fndschcdfrmbse,a.fnddisplayname,a.fndminpuramt,a.fndaddpuramt,a.fndmaxpuramt,a.fndpuramtinmulti,a.fndpurcutoff, (select json_agg(c) from (select sipfreq,sipfreqdates,sipminamt,sipmaxamt,sipmulamt,sipmininstal,sipmaxinstal,sipmingap from webapp.fundsipdt where sipfndnatcode = a.fndnatcode ) as c) as fnsipdt from webapp.fundmaster as a where UPPER(fnddisplayname) like (%s)) art",(teee,))
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        print(command)
-        print(cur)
-        print(dbqerr)
-        print(type(dbqerr))
-        print(dbqerr['natstatus'])
-
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="pf Fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-
-
-        #Model to follow in all fetch
-        records=[]
-        for record in cur:  
-            records.append(record[0])        
-        print(records)
-        print("Fund details returned for user: "+userid)
-
-        for record in records:
-            print("--------------")
-            print(record)
-            print("--------------")
-            if record.get('fnsipdt') != None:
-                for sipdt in record.get('fnsipdt'):
-                    print(sipdt)
-                    mydate=int(datetime.now().strftime('%d'))+10
-                    mymnt=int(datetime.now().strftime('%m'))
-                    mynxtmnt=int(datetime.now().strftime('%m'))+1
-                    myyr=datetime.now().strftime('%Y')
-                    sipdates=sipdt.get('sipfreqdates').split(',')
-                    print(sipdt['sipfreqdates'])
-                    sipdt['sipfreqdates']=[]
-                    for sipdate in sipdates:
-                        print(type(sipdate))
-                        print(type(mydate))
-                        if(int(sipdate)>mydate):
-                            now = (datetime.strptime((str(sipdate)+'/'+str(mymnt)+'/'+str(myyr)), '%d/%m/%Y').date()).strftime('%d-%b-%Y')         
-                                                
-                            print(now)
-                            print(type(now))
-                            
-                            #sipdt['sipfreqdates'].append(str(sipdate)+'/'+str(mymnt)+'/'+str(myyr))
-                            sipdt['sipfreqdates'].append(now)
-                            
-                        else:
-                            #sipdt['sipfreqdates'].append(str(sipdate)+'/'+str(mynxtmnt)+'/'+str(myyr))
-                            #now = datetime.strptime((str(sipdate)+'/'+str(mynxtmnt)+'/'+str(myyr)), '%d/%m/%Y').date()
-                            now1=(datetime.strptime((str(sipdate)+'/'+str(mynxtmnt)+'/'+str(myyr)), '%d/%m/%Y').date()).strftime('%d-%b-%Y')
-                            print(now1)                         
-                            print(type(now1))
-                            sipdt['sipfreqdates'].append(now1)
-
-
-                    print(sipdt['sipfreqdates'])
-                
-                
-
-
-        
-        resp = json.dumps(records)
-    
-    return resp
-
 
 @app.route('/pfdatasave',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
@@ -181,9 +84,9 @@ def pfdatasavee():
         #payload = request.stream.read().decode('utf8')    
         
         pfdata = payload
-        print("------------------")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         print(pfdata)
-        print("------------------")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         print("pfdata['pfstartdt']")
         pfdata['pfstartdt']=dateformat(pfdata['pfstartdt'])
         print(pfdata['pfstartdt'])
@@ -205,7 +108,7 @@ def pfdatasavee():
         print(pfdata)
         savetype = ""
         if 'pfportfolioid' in pfdata:
-            if pfdata.get('pfportfolioid') == "New":
+            if pfdata.get('pfportfolioid') == "NEW":
                 savetype = "New"
             else:
                 savetype = "Old"
@@ -231,10 +134,21 @@ def pfdatasavee():
             print("key pfmflist not in the submitted record")
             #return jsonify({'natstatus':'error','statusdetails':'Data error (mflist missing)'})
 
+        if'pfscreen' in pfdata:
+            screenid= pfdata.get('pfscreen')
+            if screenid == "pfs":
+                filterstr="NEW"
+            elif screenid == "ord":
+                filterstr="INCART"
+        else:
+           screenid=None
+           print("key pfmflist not in the submitted record")       
+
 
         print("after removing")
         print("pfdata")
         print(pfdata)
+        
         
         ''' Prepre DB connection START 
         conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
@@ -442,59 +356,62 @@ def pfdatasavee():
             print('inside old')
             pfdata['pflmtime']= pfsavetimestamp
             pfdata.get('pfuserid')            
- 
-            #To update these fields
-            # pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfinvamtfeq,pfstkamtsplittype,pfmfamtsplittype,pflmtime
 
-            command = cur.mogrify("SELECT pfportfolioname,pfportfolioid FROM webapp.pfmaindetail where pfuserid = %s",(useridstr,))
-            cur, dbqerr = db.mydbfunc(con,cur,command)
+            #If request is from pfscreen then we update pf details, if it is from order screen skip this.
+            if screenid == "pfs":
+                #To update these fields
+                # pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfinvamtfeq,pfstkamtsplittype,pfmfamtsplittype,pflmtime
 
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="Portfolioname fetch Failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            
+                command = cur.mogrify("SELECT pfportfolioname,pfportfolioid FROM webapp.pfmaindetail where pfuserid = %s",(useridstr,))
+                cur, dbqerr = db.mydbfunc(con,cur,command)
 
-            #Check if the pf name already exits START
-            if cur.rowcount == 0:
-                pass
-                '''
-                dbqerr['statusdetails']="No Portfolioname exists"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-                '''
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="Portfolioname fetch Failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+                
+
+                #Check if the pf name already exits START
+                if cur.rowcount == 0:
+                    pass
+                    '''
+                    dbqerr['statusdetails']="No Portfolioname exists"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+                    '''
+                else:
+                    print("inside else")
+                    for record in cur:
+                        print(record[1])
+                        if (pfdata.get('pfportfolioname')==record[0]):
+                            if(pfdata.get('pfportfolioid') != record[1]):
+                                dbqerr['statusdetails']="Portfolioname already exists"
+                                resp = make_response(jsonify(dbqerr), 400)
+                                return(resp)   
+                #Check if the pf name already exits START
+
+                #PF details update START
+
+                pfdatajsondict = json.dumps(pfdata)
+                command = cur.mogrify("""
+                                    update webapp.pfmaindetail set(pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfstkamtsplittype,pfmfamtsplittype,pflmtime) = 
+                                    (select pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfstkamtsplittype,pfmfamtsplittype,pflmtime from json_to_record (%s)
+                                    AS (pfportfolioname varchar(50),pfpurpose varchar(600),pfbeneusers varchar(40),pfstartdt date,pftargetdt date,pftargetintrate numeric(5,2),pfplannedinvamt numeric(16,5),pfstkamtsplittype varchar(10),pfmfamtsplittype varchar(10),pflmtime timestamp))
+                                    where pfportfolioid = %s and pfuserid = %s;
+                                    """,(str(pfdatajsondict),pfdata.get('pfportfolioid'),useridstr,))
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="main update  Failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+
+                #PF details update END
             else:
-                print("inside else")
-                for record in cur:
-                    print(record[1])
-                    if (pfdata.get('pfportfolioname')==record[0]):
-                        if(pfdata.get('pfportfolioid') != record[1]):
-                            dbqerr['statusdetails']="Portfolioname already exists"
-                            resp = make_response(jsonify(dbqerr), 400)
-                            return(resp)   
-            #Check if the pf name already exits START
-
-            #PF details update START
-
-            pfdatajsondict = json.dumps(pfdata)
-            command = cur.mogrify("""
-                                  update webapp.pfmaindetail set(pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfstkamtsplittype,pfmfamtsplittype,pflmtime) = 
-                                  (select pfportfolioname,pfpurpose,pfbeneusers,pfstartdt,pftargetdt,pftargetintrate,pfplannedinvamt,pfstkamtsplittype,pfmfamtsplittype,pflmtime from json_to_record (%s)
-                                  AS (pfportfolioname varchar(50),pfpurpose varchar(600),pfbeneusers varchar(40),pfstartdt date,pftargetdt date,pftargetintrate numeric(5,2),pfplannedinvamt numeric(16,5),pfstkamtsplittype varchar(10),pfmfamtsplittype varchar(10),pflmtime timestamp))
-                                  where pfportfolioid = %s and pfuserid = %s;
-                                  """,(str(pfdatajsondict),pfdata.get('pfportfolioid'),useridstr,))
-            print(command)
-            cur, dbqerr = db.mydbfunc(con,cur,command)
-
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="main update  Failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-
-            #PF details update END
-
+                pass
             ###PF stock details update START###
 
             ''' feel we should not remove intead update existing and insert new so commenting it
@@ -675,8 +592,7 @@ def pfdatasavee():
                             pass
                     else:
                         #fund is existing so we have to update
-                        #d['ormflistid']='mf'+pfdata.get('pfportfolioid')+str(pfmflsseqnum)
-                        #d['orportfolioid']=pfdata.get('pfportfolioid')
+
                         d['entityid']=entityid
                         d['orpfuserid']=pfdata.get('pfuserid')
                         pfmflsdatalist.append(d['ormflistid'])
@@ -692,19 +608,22 @@ def pfdatasavee():
                         pfmflsdatajsondict = json.dumps(d)
                         #command = cur.mogrify("UPDATE webapp.pfmflist select * from json_populate_record(NULL::webapp.pfmflist,%s) WHERE ormflistid =%s AND entityid = %s;",(str(pfmflsdatajsondict),d.get('ormflistid'),entityid,))
                         
-                        command = cur.mogrify("""
-                                    UPDATE webapp.pfmflist set(ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime) = 
-                                    (select ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime from json_to_record (%s)
-                                    AS (ormffundname varchar(100),ormffndcode varchar(100),ormffndnameedit varchar(100),ormfdathold text,ormflmtime timestamp))
-                                    WHERE ormflistid =%s AND entityid = %s;
-                                """,(str(pfmflsdatajsondict),d.get('ormflistid'),entityid,))                       
-                        print(command)                
-                        cur, dbqerr = db.mydbfunc(con,cur,command)
-                        if cur.closed == True:
-                            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                                dbqerr['statusdetails']="mflist insert Failed"
-                            resp = make_response(jsonify(dbqerr), 400)
-                            return(resp)
+                        #donot update if the fund is fixed : START
+                        if(d['ormffndnameedit'] == 'fixed'):
+                            command = cur.mogrify("""
+                                        UPDATE webapp.pfmflist set(ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime) = 
+                                        (select ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime from json_to_record (%s)
+                                        AS (ormffundname varchar(100),ormffndcode varchar(100),ormffndnameedit varchar(100),ormfdathold text,ormflmtime timestamp))
+                                        WHERE ormflistid =%s AND entityid = %s;
+                                    """,(str(pfmflsdatajsondict),d.get('ormflistid'),entityid,))                       
+                            print(command)                
+                            cur, dbqerr = db.mydbfunc(con,cur,command)
+                            if cur.closed == True:
+                                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                                    dbqerr['statusdetails']="mflist insert Failed"
+                                resp = make_response(jsonify(dbqerr), 400)
+                                return(resp)
+                        #donot update if the fund is fixed : END
 
                         #pfmforlsseqnum=1
                         if pfmflsordata != None:
@@ -768,24 +687,28 @@ def pfdatasavee():
                                         return(resp)
                                 else:
                                     #For existing SIP or onetime record for the fund
+
                                     pfmforlsdatalist.append(e['orormfpflistid'])
-                                    pfmflsordatajsondict = json.dumps(e)
-                                    #command = cur.mogrify("UPDATE webapp.pfmforlist select * from json_populate_record(NULL::webapp.pfmforlist,%s) where orormfpflistid = %s and entityid = %s",(str(pfmflsordatajsondict),e.get('orormfpflistid'),entityid,))
+                                    pfmflsordatajsondict = json.dumps(e)                                    
                                     
-                                    command = cur.mogrify("""
-                                                UPDATE webapp.pfmforlist set(orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime) = 
-                                                (select orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime from json_to_record (%s)
-                                                AS (orormffundname varchar(100),orormffndcode varchar(100),ormffundordelsfreq varchar(20),ormffundordelsstdt varchar(11),ormffundordelsamt numeric(16,5),ormfsipinstal numeric(3),ormfsipendt date,ormfsipdthold text,ormfselctedsip text,ormffndstatus varchar(10),ormflmtime timestamp))
-                                                WHERE orormfpflistid = %s AND entityid = %s;
-                                            """,(str(pfmflsordatajsondict),e.get('orormfpflistid'),entityid,))
+                                    #Record which are only editable to be updated.
+                                    if(e['ormffndstatus']=='New'):   
+                                        command = cur.mogrify("""
+                                                    UPDATE webapp.pfmforlist set(orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime) = 
+                                                    (select orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime from json_to_record (%s)
+                                                    AS (orormffundname varchar(100),orormffndcode varchar(100),ormffundordelsfreq varchar(20),ormffundordelsstdt varchar(11),ormffundordelsamt numeric(16,5),ormfsipinstal numeric(3),ormfsipendt date,ormfsipdthold text,ormfselctedsip text,ormffndstatus varchar(10),ormflmtime timestamp))
+                                                    WHERE orormfpflistid = %s AND entityid = %s;
+                                                """,(str(pfmflsordatajsondict),e.get('orormfpflistid'),entityid,))
 
 
-                                    cur, dbqerr = db.mydbfunc(con,cur,command)
-                                    if cur.closed == True:
-                                        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                                            dbqerr['statusdetails']="mflist details insert Failed"
-                                        resp = make_response(jsonify(dbqerr), 400)
-                                        return(resp)
+                                        cur, dbqerr = db.mydbfunc(con,cur,command)
+                                        if cur.closed == True:
+                                            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                                                dbqerr['statusdetails']="mflist details insert Failed"
+                                            resp = make_response(jsonify(dbqerr), 400)
+                                            return(resp)
+                                    else:
+                                        pass
                         else:
                             pass
                 
@@ -804,12 +727,15 @@ def pfdatasavee():
             print(str4)
 
             if pfmforlsdatalist:
+                #Delete the records (SIP or One time records) that are deleted from a fund
                 print("inside if")
-                command = cur.mogrify("DELETE FROM webapp.pfmforlist where orormfpflistid NOT IN %s AND entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s;",(str4,entityid,userid,pfdata.get('pfportfolioid'),))
+                command = cur.mogrify("DELETE FROM webapp.pfmforlist where orormfpflistid NOT IN %s AND entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s AND ormffndstatus = %s;",(str4,entityid,userid,pfdata.get('pfportfolioid'),filterstr,))
                 print(command)
             else:
+                #Delete all the records as all records (SIP or One time records) are deleted for a fund.  
+                # But exclude ( this condition ormffndstatus = 'New') already executed order records.
                 print("inside else")
-                command = cur.mogrify("DELETE FROM webapp.pfmforlist where entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s;",(entityid,userid,pfdata.get('pfportfolioid'),))
+                command = cur.mogrify("DELETE FROM webapp.pfmforlist where entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s  AND ormffndstatus = %s;",(entityid,userid,pfdata.get('pfportfolioid'),filterstr,))
                 print(command)            
             cur, dbqerr = db.mydbfunc(con,cur,command)
                                 
@@ -850,30 +776,46 @@ def pfdatasavee():
 
         print("All done and starting cleanups")
 
-        # Execute button to show or not : START
-        command = cur.mogrify("UPDATE webapp.pfmaindetail SET pfshowadcrtbtn = 'Y' WHERE pfportfolioid in (SELECT ororportfolioid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) = 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
-        print(command)
 
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                            
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Fund MAX sequence failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
+        # POST UPDATES FOR PF SCREEN : START
+        if screenid == "pfs":
+            # Execute button to show or not : START
+            command = cur.mogrify("UPDATE webapp.pfmaindetail SET pfshowadcrtbtn = 'Y' WHERE pfportfolioid in (SELECT ororportfolioid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) = 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
+            print(command)
 
-        command = cur.mogrify("UPDATE webapp.pfmaindetail SET pfshowadcrtbtn = '' WHERE 0 = (SELECT count(*) FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) = 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
-        print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
 
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                            
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Fund MAX sequence failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        # Execute button to show or not : END
+            command = cur.mogrify("UPDATE webapp.pfmaindetail SET pfshowadcrtbtn = '' WHERE 0 = (SELECT count(*) FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) = 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
+            print(command)
 
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+            # Execute button to show or not : END
+        else:
+            pass
+        # POST UPDATES FOR PF SCREEN : END
+
+        # POST UPDATES FOR ORDER SCREEN : START
+        if screenid == "ord":
+            pass
+        else:
+            pass
+        # POST UPDATES FOR ORDER SCREEN : END
+
+
+        #POST UPDATES COMMON:START
         # Fund edit/delete allowed : START
         #If atleast one of the order is not new, we should not allow the fund to be removed and edited
         #in this case we mark ormffndnameedit as fixed    
@@ -890,6 +832,8 @@ def pfdatasavee():
             return(resp)
         # Fund edit/delete allowed : END
 
+        #POST UPDATES COMMON:END
+
         con.commit()
         cur.close()
         con.close()
@@ -902,24 +846,50 @@ def pfdatasavee():
 
 @app.route('/onlypf',methods=['GET','POST','OPTIONS'])
 def onlypff():
-    records=[]
-    
-    if 'Authorization' in request.headers:
-        natjwtfrhead=request.headers.get('Authorization')
-        if natjwtfrhead.startswith("Bearer "):
-            natjwtfrheadf =  natjwtfrhead[8:-1]
-        natjwtdecoded = jwt.decode(natjwtfrheadf, verify=False)
-        userid=natjwtdecoded['userid']
-        if  (not userid) or (userid ==""):
-            dbqerr['natstatus'] == "error"
-            dbqerr['statusdetails']="No user id in request"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
+    if request.method=='OPTIONS':
+        print("inside onlypf options")
+        return make_response(jsonify('inside onlypf options'), 200)  
+
+    elif request.method=='POST':
+        print("inside ONLYPF post")
+        records=[]    
+        print((request))        
+        print(request.headers)
+        userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print(userid,entityid)
+        payload= request.get_json()
+        print(payload)
+
+        x=[]
+        for d in payload:
+            x.append(d['pfportfolioid'])
+        
+        if len(x) > 0:
+            pftoexclude=tuple(x)
+        else:
+            pftoexclude='%'
+
+        #pftoexclude='%'
+        print(pftoexclude)
+        
+        con,cur=db.mydbopncon()
+        '''
         conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
         con=psycopg2.connect(conn_string)
         cur = con.cursor()
+        '''
         #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
-        command = cur.mogrify("select pfportfolioname from webapp.pfmaindetail;")
+        if pftoexclude == '%':
+            command = cur.mogrify("select json_agg(art) from (select a.*, (select json_agg(b) from (select * from webapp.pfstklist where 1=2) as b) as pfstklist, (select json_agg(c) from (select * from webapp.pfmflist where 1=2 ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s and pfportfolioid like %s and entityid = %s ) art",(userid,pftoexclude,entityid,))
+        else:
+            command = cur.mogrify("select json_agg(art) from (select a.*, (select json_agg(b) from (select * from webapp.pfstklist where 1=2) as b) as pfstklist, (select json_agg(c) from (select * from webapp.pfmflist where 1=2 ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s and pfportfolioid NOT IN %s and entityid = %s ) art",(userid,pftoexclude,entityid,))
+        
+        
+        
+        #command = cur.mogrify("select pfportfolioname from webapp.pfmaindetail;")
+        print(command)
+        
         cur, dbqerr = db.mydbfunc(con,cur,command)
         print(cur)
         print(dbqerr)
@@ -928,19 +898,91 @@ def onlypff():
 
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="pf main Fetch failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+
+        #Model to follow in all fetch
+        for record in cur:  
+            records.append(record[0])        
+        print("portfolio details only returned for user: "+userid)
+        print(records)
+    if records[0]==None:
+        print("inside if")
+        records = [[]]
+    else:
+        pass
+
+    print(records)
+    return json.dumps(records)
+
+
+'''
+@app.route('/pforderdatafetch',methods=['GET','OPTIONS'])
+def pforderdatafetch():
+#This is called by fund data fetch service
+    if request.method=='OPTIONS':
+        print("inside pforderdatafetch options")
+        return make_response(jsonify('inside FUNDDATAFETCH options'), 200)  
+
+    elif request.method=='GET':
+        print("inside pforderdatafetch GET")
+        print((request))        
+        print(request.headers)
+        userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print(userid,entityid)
+        print('after')
+        
+        con,cur=db.mydbopncon()
+        
+        print(con)
+        print(cur)
+        
+        #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
+        #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid AND ormffndstatus='INCART' AND entityid=%s) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s AND entityid=%s) art",(entityid,userid,entityid,))
+        command = cur.mogrify(
+            """
+        	WITH portport as (select ororportfolioid,orormflistid,orormfpflistid from webapp.pfmforlist where ormffndstatus = 'INCART' AND ororpfuserid = %s AND entityid = %s) 
+            select row_to_json(art) from (
+            select a.*,
+            (select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, 
+            (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid in (SELECT distinct orormflistid FROM PORTPORT) AND ororportfolioid =a.pfportfolioid AND orormflistid=c.ormflistid AND ormffndstatus = 'INCART' AND entityid = %s) as d) as ormffundorderlists 
+            from webapp.pfmflist c where ormflistid in (SELECT distinct orormflistid FROM portport) AND  entityid = %s AND orportfolioid =a .pfportfolioid ) as c) as pfmflist 
+	        from webapp.pfmaindetail as a where pfuserid = %s AND entityid = %s AND pfportfolioid IN (SELECT distinct ororportfolioid FROM portport) ORDER BY pfportfolioid  ) art
+            """,(userid,entityid,entityid,entityid,userid,entityid,))
+
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print("#########################################3")
+        print(command)
+        print("#########################################3")
+        print(cur)
+        print(dbqerr)
+        print(type(dbqerr))
+        print(dbqerr['natstatus'])
+        
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
                 dbqerr['statusdetails']="pf Fetch failed"
             resp = make_response(jsonify(dbqerr), 400)
             return(resp)
 
-    
+
         #Model to follow in all fetch
+        records=[]
         for record in cur:  
-            records.append(record[0])        
-        print("portfolio name only returned for user: "+userid)
+            records.append(record[0])           
+
+
+
+        print("portfolio details returned for user: "+userid)
+        
+        
+        resp = json.dumps(records)
     
-    return json.dumps(records)
-
-
+    return resp
+'''
 
 @app.route('/executepf',methods=['POST','OPTIONS'])
 def executepf():
@@ -964,7 +1006,7 @@ def executepf():
         con,cur=db.mydbopncon()
 
         #update the pf values to INPROGRESS.  Only for NEW items
-        command = cur.mogrify("""update webapp.pfmforlist set ormffndstatus = 'INPROGRESS'
+        command = cur.mogrify("""update webapp.pfmforlist set ormffndstatus = 'INCART'
                                 WHERE orormflistid IN (select ormflistid FROM webapp.pfmflist 
                                 WHERE orportfolioid = (SELECT DISTINCT pfPortfolioid FROM webapp.pfmaindetail where pfPortfolioid = %s AND pfuserid = %s AND entityid = %s ) AND entityid = %s)
                                 AND UPPER(ormffndstatus) = 'NEW' AND entityid = %s;
@@ -980,7 +1022,7 @@ def executepf():
         
         con.commit()
         
-        #UPDATE THE 
+        #UPDATE THE SHOW CART BUTTON TO BLANK so the button doesn't come up: START
         con,cur=db.mydbopncon()
         command = cur.mogrify("UPDATE webapp.pfmaindetail SET pfshowadcrtbtn = '' WHERE pfportfolioid = %s and pfuserid = %s AND entityid = %s;",(payload,userid,entityid,))
         print(command)
@@ -994,6 +1036,7 @@ def executepf():
             return(resp)
 
         con.commit()        
+        #UPDATE THE SHOW CART BUTTON TO BLANK so the button doesn't come up: END
 
         # Fund edit/delete allowed : START
         #If atleast one of the order is not new, we should not allow the fund to be removed and edited

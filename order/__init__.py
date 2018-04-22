@@ -4,6 +4,4 @@ from flask_cors import CORS, cross_origin
 app = Flask(__name__)
 CORS(app)
 
-from pf import portfolio
-from pf import mforder
-from pf import fund
+from order import mforder
