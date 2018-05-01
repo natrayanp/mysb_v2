@@ -411,7 +411,7 @@ def dtlfrmsave():
         con,cur=db.mydbopncon()
 
         #update UCC CLIENT MASTER table START
-        comqry = 'UPDATE uccclientmaster SET ('+ regiskeys + ') = (' + regisvals + ') WHERE ucclguserid = %s AND uccentityid = %s;'
+        comqry = 'UPDATE webapp.uccclientmaster SET ('+ regiskeys + ') = (' + regisvals + ') WHERE ucclguserid = %s AND uccentityid = %s;'
         command = cur.mogrify(comqry,(userid,entityid,))
         print('command :',command)                
  

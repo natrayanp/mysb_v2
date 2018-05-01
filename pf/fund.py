@@ -39,7 +39,7 @@ def funddatafetch():
         teee='%'+payload+'%'
         #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
         #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(c) from (select * from webapp.fundsipdt where sipfndnatcode = a.fndnatcode ) as c) as fnsipdt from webapp.fundmaster as a where fnddisplayname like %s) art",(teee,))
-        command = cur.mogrify("select row_to_json(art) from (select a.fndnatcode,a.fndschcdfrmbse,a.fnddisplayname,a.fndminpuramt,a.fndaddpuramt,a.fndmaxpuramt,a.fndpuramtinmulti,a.fndpurcutoff, (select json_agg(c) from (select sipfreq,sipfreqdates,sipminamt,sipmaxamt,sipmulamt,sipmininstal,sipmaxinstal,sipmingap from webapp.fundsipdt where sipfndnatcode = a.fndnatcode ) as c) as fnsipdt from webapp.fundmaster as a where UPPER(fnddisplayname) like (%s)) art",(teee,))
+        command = cur.mogrify("select row_to_json(art) from (select a.fndnatcode,a.fndschcdfrmbse,a.fnddisplayname,a.fndminpuramt,a.fndaddpuramt,a.fndmaxpuramt,a.fndpuramtinmulti,a.fndpurcutoff,a.fndamcnatcode, (select json_agg(c) from (select sipfreq,sipfreqdates,sipminamt,sipmaxamt,sipmulamt,sipmininstal,sipmaxinstal,sipmingap from webapp.fundsipdt where sipfndnatcode = a.fndnatcode ) as c) as fnsipdt from webapp.fundmaster as a where UPPER(fnddisplayname) like (%s)) art",(teee,))
         cur, dbqerr = db.mydbfunc(con,cur,command)
         print(command)
         print(cur)

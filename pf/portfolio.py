@@ -297,11 +297,13 @@ def pfdatasavee():
                             e['ormflmtime']= pfsavetimestamp
                             e['orormfpflistid']= "or"+d.get('ormflistid')+str(pfmforlsseqnum)
                             e['ororportfolioid']=d.get('orportfolioid')
+                            e['orpfportfolioname']=pfdata.get('pfportfolioname')
                             e['ororpfuserid']=d.get('orpfuserid')
                             e['orormffundname']=d.get('ormffundname')
                             e['orormffndcode']=d.get('ormffndcode')
+                            e['ororfndamcnatcode']=d.get('ormfnatamccode')
                             e['entityid']=entityid
-                            e['orormfseqnum']=pfmforlsseqnum                            
+                            e['orormfseqnum']=pfmforlsseqnum                                
                             pfmforlsseqnum = pfmforlsseqnum+1
                             pfmflsordatajsondict = json.dumps(e)
                             print(e['ormffundordelsstdt'])
@@ -542,6 +544,7 @@ def pfdatasavee():
                                 e['entityid']=entityid
                                 #e['orormfpflistid']= "or"+d.get('ormflistid')+str(pfmforlsseqnum)
                                 e['ororportfolioid']=d.get('orportfolioid')
+                                e['orpfportfolioname']=pfdata.get('pfportfolioname')
                                 e['ororpfuserid']=d.get('orpfuserid')
                                 e['orormffundname']=d.get('ormffundname')
                                 e['orormffndcode']=d.get('ormffndcode')
@@ -670,6 +673,7 @@ def pfdatasavee():
                                     e['orormflistid']= d.get('ormflistid')
                                     e['orormfseqnum'] = str(pfmforlsseqnum)
                                     e['ororportfolioid']=d.get('orportfolioid')
+                                    e['orpfportfolioname']=pfdata.get('pfportfolioname')
                                     e['ororpfuserid']=d.get('orpfuserid')
                                     pfmforlsdatalist.append(e['orormfpflistid'])
                                     
@@ -1146,8 +1150,17 @@ def dateformat(datestr):
             centralstr=central.strftime('%Y-%m-%d')
             print(centralstr)
             return centralstr
+        elif(isinstance(datestr, str)):
+            print(datestr)
+            datefrm = datetime.strptime(datestr, '%d-%m-%Y')
+            print(datefrm)
         else:
             return datestr
+
+
+
+
+
 
         
 #THIS CODE IS IN THE API : START
