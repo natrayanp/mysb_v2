@@ -70,3 +70,16 @@ METHOD_FILEUP_URL = [
     'http://tempuri.org/IStarMFFileUploadService/'
     #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
 ]
+#url for BSEStar payment link
+WSDL_PAYLNK_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFPaymentGatewayService/StarMFPaymentGatewayService.svc?singleWsdl' 
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc?singleWsdl'
+]
+SVC_PAYLNK_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFPaymentGatewayService/StarMFPaymentGatewayService.svc/Basic'
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc/Basic'
+]
+METHOD_PAYLNK_URL = [
+    'http://tempuri.org/IStarMFPaymentGatewayService/'
+    #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
+]

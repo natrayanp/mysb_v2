@@ -40,24 +40,31 @@ def place_order_bse(jsondata):
     print("insde bse order")
     print(bse_orders)
 
+    global client
+    global pass_dict
+
     client = zeep.Client(wsdl=settings.WSDL_ORDER_URL[settings.LIVE])
     set_soap_logging()
-
     ## get the password 
-    global pass_dict
     pass_dict = soap_get_password_order(client)
 
     print(bse_orders)
+    '''
     print("ontime multiprocessing starts")
     pool = Pool(processes=10)
     result = pool.map_async(send_one_order, bse_orders)
     result.wait()        
-    print("end with ontime")
-    print(result.get())
-    order_resp = result.get()
-    pool.close()
-    pool.join()
+    '''
+    order_resp=[]
+    for bse_order in bse_orders:
+        result=send_one_order(bse_order)
+        order_resp.append(result)
     
+    print("end with ontime")
+    #print(result.get())
+    #order_resp = result.get()
+    #pool.close()
+    #pool.join()    
     return order_resp
 
 
@@ -126,10 +133,10 @@ def soap_get_password_order(client):
     header_value = soap_set_wsa_headers(method_url, svc_url)
     print("reached here")
     response = client.service.getPassword(
+        _soapheaders=[header_value],
         UserId=settings.USERID[settings.LIVE], 
         Password=settings.PASSWORD[settings.LIVE], 
-        PassKey=settings.PASSKEY[settings.LIVE], 
-        _soapheaders=[header_value]
+        PassKey=settings.PASSKEY[settings.LIVE] 
     )
     
     response = response.split('|')
@@ -283,6 +290,24 @@ def soap_post_xsip_order(client, bse_order):
         )
 
 
+def get_payment_link_bse(payload):
+    '''
+    Gets the payment link corresponding to a client
+    Called immediately after creating transaction 
+    '''
+    print('inside payment')
+    print(payload)
+    ## get the payment link and store it
+    client = zeep.Client(wsdl=settings.WSDL_PAYLNK_URL[settings.LIVE])
+    set_soap_logging()
+    print('before passdict')
+    pass_dict = soap_get_password_upload(client)
+    print('after passdict')
+    payment_url = soap_create_payment(client, str(payload['client_code']), payload['transaction_ids'], payload['total_amt'], pass_dict)
+    #soap_create_payment(client, client_code, transaction_id, pass_dict,total_amt):
+    print('paym,ent url')
+    print(payment_url)
+    return payment_url
 
 
 # store response to order entry from bse 
@@ -315,6 +340,95 @@ def store_order_response(response, order_type):
         }
     #trans_response.save()
     return trans_response
+
+
+
+
+def soap_get_password_upload(client):
+    method_url = settings.METHOD_PAYLNK_URL[settings.LIVE] + 'GetPassword'
+    svc_url = settings.SVC_PAYLNK_URL[settings.LIVE]
+    header_value = soap_set_wsa_headers(method_url, svc_url)      
+    '''
+    response = client.service.GetPassword(
+        UserId=settings.USERID[settings.LIVE],
+        MemberId=settings.MEMBERID[settings.LIVE], 
+        Password=settings.PASSWORD[settings.LIVE], 
+        PassKey=settings.PASSKEY[settings.LIVE], 
+        _soapheaders=[header_value]
+    )
+    '''
+    response = client.service.GetPassword ({
+        'MemberId': settings.MEMBERID[settings.LIVE],  
+        'UserId': settings.USERID[settings.LIVE],
+        'Password': settings.PASSWORD[settings.LIVE], 
+        'PassKey': settings.PASSKEY[settings.LIVE]
+        }, 
+        _soapheaders=[header_value]
+        )
+    
+    print('after response')
+    print(response)
+
+    #response = response.split('|')
+    #status = response[0]
+    if (response.Status == '100'):
+        # login successful
+        pass_dict = {'password': response.ResponseString, 'passkey': settings.PASSKEY[settings.LIVE]}
+        #pass_dict = {'password': response[1], 'passkey': settings.PASSKEY[settings.LIVE]}
+        return pass_dict
+    else:
+        raise Exception(
+            "BSE error 640: Login unsuccessful for upload API endpoint"
+        )
+
+
+## fire SOAP query to get the payment url 
+def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dict):
+
+    print(client_code)
+    print(transaction_id)
+    str = "'"
+    le=0
+    for tran_id in transaction_id:
+        if le == 0:
+            str = tran_id
+        else:
+            str = "," + tran_id
+    
+
+    print(str)
+    method_url = settings.METHOD_PAYLNK_URL[settings.LIVE] + 'PaymentGatewayAPI'
+    header_value = soap_set_wsa_headers(method_url, settings.SVC_PAYLNK_URL[settings.LIVE])
+    logout_url = 'http://localhost:4200/securedpg/'
+    response = client.service.PaymentGatewayAPI({
+        'AccNo':'123456789123',
+        'BankID': '162',
+        'ClientCode': client_code,
+        'EncryptedPassword': pass_dict['password'],
+        'IFSC':'ALLA0212398',
+        'LogOutURL':logout_url,
+        'MemberCode':settings.MEMBERID[settings.LIVE],
+        'Mode':'DIRECT',
+        'Orders':{"string": transaction_id},
+        'TotalAmount':total_amt
+        },
+        #settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
+        _soapheaders=[header_value]
+    )
+    print(response)
+    #response = response.split('|')
+    #status = response[0]
+
+    if (response.Status == '100'):
+        # getting payment url successful
+        payment_url = response.ResponseString
+
+        return payment_url
+    else:
+        raise Exception(
+            "BSE error 646: Payment link creation unsuccessful: %s" % response.ResponseString
+        )
+
 
 # every soap query to bse must have wsa headers set 
 def soap_set_wsa_headers(method_url, svc_url):    

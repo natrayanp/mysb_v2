@@ -682,11 +682,6 @@ def mfordervalidate():
 
         cur, dbqerr = db.mydbfunc(con,cur,command)
                             
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Fund MAX sequence failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
 
         command = cur.mogrify("""
             UPDATE webapp.pfmforlist SET ormffndstatus = 'SUBM' WHERE ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
@@ -728,7 +723,7 @@ def mfordervalidate():
         #if error send all the records to front end
         command = cur.mogrify("""
         SELECT json_agg(b) FROM (
-            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors FROM webapp.mforderdetails X
+            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
             LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
             WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'VAS' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
             ) AS b;
@@ -753,7 +748,7 @@ def mfordervalidate():
         
         command = cur.mogrify("""
         SELECT json_agg(b) FROM (
-            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors FROM webapp.mforderdetails X
+            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
             LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
             WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'VAF' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
             ) AS b;
@@ -813,13 +808,13 @@ def mfordersubmit():
         con,cur=db.mydbopncon()
 
         command = cur.mogrify("""
-                    SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s and mfor_orderstatus = 'VAS';
                     """,(str,userid,entityid,))
         print(command)
         cur, dbqerr = db.mydbfunc(con,cur,command)
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="DB query failed, BEGIN failed"
+                dbqerr['statusdetails']="selecting order to submit to BSE failed"
             resp = make_response(jsonify(dbqerr), 400)
             return(resp)
         
@@ -830,12 +825,130 @@ def mfordersubmit():
             orders.append(record[0])
 
         print(orders)
-        one_time_records = json.dumps(orders)
+        order_records = json.dumps(orders)
 
-        orderresp = mforderapi.place_order_bse(one_time_records)
+        orderresp = mforderapi.place_order_bse(order_records)
         print(orderresp)
+        #Add code to update the order id
 
-    return one_time_records
+        ot_orderids=[]
+        sip_orderids=[]
+
+        for orderres in orderresp:
+            
+            if orderres['success_flag'] == '0':
+            
+                if orderres['order_type'] == 'OneTime':
+                    ot_orderids.append(orderres['trans_no'])
+                    command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPY', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+                
+                elif orderres['order_type'] == 'SIP':
+                    sip_orderids.append(orderres['trans_no'])
+                    command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'INP', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+            
+            else:
+                if orderres['order_type'] == 'OneTime':
+                    ot_orderids.append(orderres['trans_no'])
+                    command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+
+                elif orderres['order_type'] == 'SIP':
+                    sip_orderids.append(orderres['trans_no'])
+                    command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+
+            print(command)
+
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            con.commit()
+
+            '''       
+            Do Not send any response for DB update failures.                         
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            '''
+        if orderres['order_type'] == 'OneTime':
+            str2 = tuple(ot_orderids)           
+
+            command = cur.mogrify("""
+            SELECT json_agg(b) FROM (
+                SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_orderid,X.mfor_clientcode FROM webapp.mforderdetails X
+                LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
+                WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'PPY' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
+                ) AS b;
+            """,(str2,userid,entityid,))
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                    
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Validation records fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            print("cur") 
+            print(cur)
+            
+            #Model to follow in all fetch
+            suc_records=[]
+            for record in cur:
+                #print(record)
+                suc_records = record[0]
+            #print("iam printing records to see")
+            
+            command = cur.mogrify("""
+            SELECT json_agg(b) FROM (
+                SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
+                LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
+                WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'FAI' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
+                ) AS b;
+            """,(str2,userid,entityid,))
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                    
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Validation records fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            print("cur") 
+            print(cur)
+            
+            #Model to follow in all fetch
+            fai_records=[]
+            for record in cur:
+                #print(record)
+                fai_records = record[0]
+            #print("iam printing records to see")
+            
+            resp_recs={
+                'success_recs': suc_records,
+                'failure_recs': fai_records,
+            }
+
+            print(json.dumps(resp_recs))
+
+            cur.close()
+            con.close()  
+
+        elif orderres['order_type'] == 'SIP':
+            resp_recs = {
+                'status' : 'completed',
+                'sip_orderids': sip_orderids
+                }
+
+    return json.dumps(resp_recs)
+
+
+
 
 
 @app.route('/mforderpayment',methods=['GET','POST','OPTIONS'])
@@ -850,15 +963,37 @@ def mforderpayment():
         print(request.headers)
         payload= request.get_json()
         #payload = request.stream.read().decode('utf8')    
+        print(payload)
 
         ord_ids=[]
+        total_amt = 0
         for payld in payload:
-            ord_ids.append(payld['mfor_uniquereferencenumber'])
+            ord_ids.append(payld['mfor_orderid'])
+            total_amt = total_amt + payld['mfor_amount']
 
-        str=tuple(ord_ids)
-        print(str)
-        userid,entityid=jwtnoverify.validatetoken(request)
+        # userid,entityid=jwtnoverify.validatetoken(request)
+        print(payload[0]['mfor_clientcode'])
+        
+        record_to_submit = {
+            'client_code' : payload[0]['mfor_clientcode'],
+            'transaction_ids' : ord_ids,
+            'total_amt': total_amt
+        }
+
+        url_pay=mforderapi.get_payment_link_bse(record_to_submit)
+        print("url_pay")
+        print(url_pay)
+
+        #r = Response(response=url_pay, status=200, mimetype="text/html")
+        #r.headers["Content-Type"] = "text/html; charset=utf-8"
+        #return r
+        return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        '''
         con,cur=db.mydbopncon()
+
+
+
+
 
         command = cur.mogrify("""
                     SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
@@ -880,8 +1015,8 @@ def mforderpayment():
         print(orders)
         one_time_records = json.dumps(orders)
     
-    return "ok"
-
+        return "ok"
+        '''
 
 
 def dateformat1(datestr):
@@ -1235,3 +1370,7 @@ def prepare_isip_ord(ord):
         return( False, json.dumps(data_dict))
 
 
+# function to VALIDATE and CREATE data for ISIP order
+def prepare_pay_lnk_rec(ord):
+    #Prepares record to get payment link
+    haserror = False
