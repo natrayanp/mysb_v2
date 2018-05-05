@@ -982,12 +982,19 @@ def mforderpayment():
 
         url_pay=mforderapi.get_payment_link_bse(record_to_submit)
         print("url_pay")
-        print(url_pay)
+        print(type(url_pay))
 
+        returnval = {
+            'html' : url_pay
+        }
+        print(returnval)
+        print(type(returnval))
+        return jsonify(returnval)
+        
         #r = Response(response=url_pay, status=200, mimetype="text/html")
         #r.headers["Content-Type"] = "text/html; charset=utf-8"
         #return r
-        return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        #return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
         '''
         con,cur=db.mydbopncon()
 
@@ -1374,3 +1381,26 @@ def prepare_isip_ord(ord):
 def prepare_pay_lnk_rec(ord):
     #Prepares record to get payment link
     haserror = False
+
+
+
+
+@app.route('/orpost',methods=['GET','POST','OPTIONS'])
+def orpost():
+    if request.method=='OPTIONS':
+        print ("inside orderapi options")
+        return 'inside orderapi options'
+
+    elif request.method=='POST' :
+        print("inside orderapi POST")
+
+        print((request))        
+        #userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        payload= request.values
+        #payload=json.loads(payload)
+        print(payload)
+        bse_order = 'nat'
+        #bse_order = json.loads(payload)
+        print(bse_order)
+        return bse_order

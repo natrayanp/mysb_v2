@@ -375,3 +375,45 @@ def soap_set_wsa_headers(method_url, svc_url):
     )
 	header_value = header(Action=method_url, To=svc_url)
 	return header_value
+
+
+
+
+def get_payment_link_bse(client_code, transaction_id):
+	'''
+	Gets the payment link corresponding to a client
+	Called immediately after creating transaction 
+	'''
+
+	## get the payment link and store it
+	client = zeep.Client(wsdl=settings.WSDL_UPLOAD_URL[settings.LIVE])
+	set_soap_logging()
+	pass_dict = soap_get_password_upload(client)
+	payment_url = soap_create_payment(client, str(client_code), transaction_id, pass_dict)
+
+	return payment_url
+
+
+def soap_create_payment(client, client_code, transaction_id, pass_dict):
+	method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
+	header_value = soap_set_wsa_headers(method_url, settings.SVC_UPLOAD_URL[settings.LIVE])
+	logout_url = 'http://localhost:8000/orpost'
+	response = client.service.MFAPI(
+		'03',
+		settings.USERID[settings.LIVE],
+		pass_dict['password'],
+		settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
+		_soapheaders=[header_value]
+	)
+	print
+	response = response.split('|')
+	status = response[0]
+
+	if (status == '100'):
+		# getting payment url successful
+		payment_url = response[1]
+		return payment_url
+	else:
+		raise Exception(
+			"BSE error 646: Payment link creation unsuccessful: %s" % response[1]
+		)
