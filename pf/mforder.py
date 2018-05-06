@@ -16,6 +16,7 @@ from datetime import date
 from multiprocessing import Process
 from multiprocessing import Pool
 from pf import mforderapi
+import requests
 
 import psycopg2
 import json
@@ -979,17 +980,40 @@ def mforderpayment():
             'transaction_ids' : ord_ids,
             'total_amt': total_amt
         }
+        
+        # FOR BSE PAYMENT LINK : START
+        url_pay=mforderapi.get_payment_link_bse1(record_to_submit)
+        #Code to be re-written to include http call
+        '''
+        url=settings.BSESTAR_USERCREATION_URL[settings.LIVE];
+        print(url)
+        print(record_to_submit)
+        
+        r = requests.post(url, json=record_to_submit)
+        print(r.text)
+        url_pay= json.loads(r.text)   
+        print('url_pay :',url_pay)     
+        '''
+        # FOR BSE PAYMENT LINK : END
+        
+        # FOR DIRECT BANK PAYMENT LINK
+        #url_pay=mforderapi.get_payment_link_bse(record_to_submit)
+        
+        #return status from get_payment_link_bse1
+        if((url_pay['status'] == 'success') and (url_pay['url_type'] == 'bsepayurl')):
+            print("url_pay")
+            print(type(url_pay['payment_url']))
+            returns = {'html' : url_pay['payment_url']}
+            return jsonify(returns)
+        else:        
+            return url_pay
 
-        url_pay=mforderapi.get_payment_link_bse(record_to_submit)
-        print("url_pay")
-        print(type(url_pay))
-
-        returnval = {
-            'html' : url_pay
-        }
-        print(returnval)
-        print(type(returnval))
-        return jsonify(returnval)
+        ##return status from get_payment_link_bse
+        if((url_pay['status'] == 'success') and (url_pay['url_type'] == 'directbnkurl')):
+            pass
+        else:
+            pass
+        
         
         #r = Response(response=url_pay, status=200, mimetype="text/html")
         #r.headers["Content-Type"] = "text/html; charset=utf-8"

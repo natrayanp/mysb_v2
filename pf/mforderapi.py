@@ -42,18 +42,27 @@ def place_order_bse(jsondata):
 
     global client
     global pass_dict
-
+    global results_updated
+    results_updated = []
     client = zeep.Client(wsdl=settings.WSDL_ORDER_URL[settings.LIVE])
     set_soap_logging()
     ## get the password 
     pass_dict = soap_get_password_order(client)
 
+    for bse_order in bse_orders:
+        bse_order['password'] = pass_dict['password']
+        bse_order['pass_key'] = pass_dict['passkey']
+        
     print(bse_orders)
-    '''
-    print("ontime multiprocessing starts")
+    
+    print("multiprocessing starts")
     pool = Pool(processes=10)
     result = pool.map_async(send_one_order, bse_orders)
+    print(result)
+    
+
     result.wait()        
+    #print(result.get())
     '''
     order_resp=[]
     for bse_order in bse_orders:
@@ -61,21 +70,31 @@ def place_order_bse(jsondata):
         order_resp.append(result)
     
     print("end with ontime")
-    #print(result.get())
-    #order_resp = result.get()
-    #pool.close()
-    #pool.join()    
+    '''
+    print(result.get())
+    order_resp = result.get()
+    #print(results_updated)
+    pool.close()
+    pool.join()    
+    print('all done')
     return order_resp
 
+def update_res(val):
+    print(val)
+    results_updated.append(val)
 
 def send_one_order(bse_order):
+    print('*&*&^%^%%^^&&&&&&&%%$*()_)*%#$#')
     print(bse_order)
-
+    print('*&*&^%^%%^^&&&&&&&%%$*()_)*%#$#')
     bse_order['user_id'] = settings.USERID[settings.LIVE]
     bse_order['member_id'] = settings.MEMBERID[settings.LIVE]
+    '''
     bse_order['password'] = pass_dict['password']
     bse_order['pass_key'] = pass_dict['passkey']
-    
+    '''
+    client = zeep.Client(wsdl=settings.WSDL_ORDER_URL[settings.LIVE])
+
 
     ## prepare order, post it to BSE and save response
     ## for lumpsum transaction 
@@ -213,7 +232,6 @@ def soap_post_onetime_order(client, bse_order):
         _soapheaders=[header_value]
     )
 
-    ## this is a good place to put in a slack alert
 
     response = response.split('|')
     print(response)
@@ -290,7 +308,7 @@ def soap_post_xsip_order(client, bse_order):
         )
 
 
-def get_payment_link_bse1(payload):
+def get_payment_link_bse(payload):
     '''
     Gets the payment link corresponding to a client
     Called immediately after creating transaction 
@@ -387,29 +405,29 @@ def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dic
 
     print(client_code)
     print(transaction_id)
-    str = "'"
-    le=0
-    for tran_id in transaction_id:
-        if le == 0:
-            str = tran_id
-        else:
-            str = "," + tran_id
-    
 
-    print(str)
+    emptyArrayPlaceholder = client.get_type('ns3:ArrayOfstring')
+    options = emptyArrayPlaceholder()
+    print(options)
+    for tran_id in transaction_id:
+        options['string'].append(tran_id)
+
+    print(options)
+
     method_url = settings.METHOD_PAYLNK_URL[settings.LIVE] + 'PaymentGatewayAPI'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_PAYLNK_URL[settings.LIVE])
     logout_url = 'http://localhost:8000/orpost'
     response = client.service.PaymentGatewayAPI({
         'AccNo':'123456789123',
-        'BankID': 'ALB',
+        'BankID': 'ICI',
         'ClientCode': client_code,
         'EncryptedPassword': pass_dict['password'],
-        'IFSC':'ALLA0212398',
+        'IFSC':'ICIC0000001',
         'LogOutURL':logout_url,
         'MemberCode':settings.MEMBERID[settings.LIVE],
-        'Mode':'NODAL',
-        'Orders':{"string": transaction_id},
+        'Mode':'DIRECT',
+        #'Orders':{"string": transaction_id},
+        'Orders':options,
         'TotalAmount':total_amt
         },
         #settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
@@ -690,7 +708,8 @@ def prepare_fatca_param(payload):
 
 ## fire SOAP query to get password for Upload API endpoint
 ## used by all functions except create_transaction_bse() and cancel_transaction_bse()
-def soap_get_password_upload(client):
+
+def soap_get_password_upload1(client):
 	print('inside soap_get_password_upload')
 	method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'getPassword'
 	svc_url = settings.SVC_UPLOAD_URL[settings.LIVE]
@@ -827,7 +846,7 @@ def soap_set_wsa_headers(method_url, svc_url):
 
 
 
-def get_payment_link_bse(payload):
+def get_payment_link_bse1(payload):
     '''
     Gets the payment link corresponding to a client
     Called immediately after creating transaction 
@@ -838,13 +857,13 @@ def get_payment_link_bse(payload):
     ## get the payment link and store it
     client = zeep.Client(wsdl=settings.WSDL_UPLOAD_URL[settings.LIVE])
     set_soap_logging()
-    pass_dict = soap_get_password_upload(client)
-    payment_url = soap_create_payment(client, str(client_code), pass_dict)
+    pass_dict = soap_get_password_upload1(client)
+    payment_url = soap_create_payment1(client, str(client_code), pass_dict)
 
     return payment_url
 
 
-def soap_create_payment(client, client_code,  pass_dict):
+def soap_create_payment1(client, client_code,  pass_dict):
     method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_UPLOAD_URL[settings.LIVE])
     logout_url = 'http://localhost:8000/orpost'
@@ -862,8 +881,23 @@ def soap_create_payment(client, client_code,  pass_dict):
     if (status == '100'):
         # getting payment url successful
         payment_url = response[1]
-        return payment_url
+        
+        response_string = { 
+            'payment_url':payment_url,
+            'status': 'success',
+            'url_type' : 'bsepayurl'
+            }
+        print(response_string)
+        return response_string
     else:
+        response_string = { 
+            'payment_url':'',
+            'status': 'failed',
+            'url_type' : 'bsepayurl'
+            }
+        return response_string
+        '''
         raise Exception(
             "BSE error 646: Payment link creation unsuccessful: %s" % response[1]
         )
+        '''
