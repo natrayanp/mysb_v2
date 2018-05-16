@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc.
+# Copyright 2014 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -620,7 +620,7 @@ def make_insecure_stub(stub_class, host, port=None):
 
 try:
     from pytz import UTC  # pylint: disable=unused-import,wrong-import-order
-except ImportError:
+except ImportError:  # pragma: NO COVER
     UTC = _UTC()  # Singleton instance to be used throughout.
 
 # Need to define _EPOCH at the end of module since it relies on UTC.

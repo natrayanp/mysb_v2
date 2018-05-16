@@ -1,12 +1,11 @@
 #!/home/natrayan/project/AwsProject/Python/Tradingapp/tradingapp5/natvenv/env/bin/python3.6
-# EASY-INSTALL-ENTRY-SCRIPT: 'cfn-flip==1.0.0','console_scripts','cfn-flip'
-__requires__ = 'cfn-flip==1.0.0'
+
+# -*- coding: utf-8 -*-
 import re
 import sys
-from pkg_resources import load_entry_point
+
+from cfn_flip.main import main
 
 if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
-    sys.exit(
-        load_entry_point('cfn-flip==1.0.0', 'console_scripts', 'cfn-flip')()
-    )
+    sys.exit(main())

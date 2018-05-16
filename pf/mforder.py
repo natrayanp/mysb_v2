@@ -11,11 +11,12 @@ from datetime import datetime
 from order import dbfunc as db
 from order import jwtdecodenoverify as jwtnoverify
 from dateutil import tz
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import date
 from multiprocessing import Process
 from multiprocessing import Pool
 from pf import mforderapi
+from pf import mfsiporder
 import requests
 
 import psycopg2
@@ -472,7 +473,7 @@ def mfordersave():
         
             #do the clean up of funds removed: START
             if pfmflsdatalist:                
-                command = cur.mogrify("DELETE FROM webapp.pfmflist where ormflistid NOT IN %s AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s;",(str2,entityid,userid,pfdata.get('pfportfolioid'),))
+                command = cur.mogrify("DELETE FROM webapp.pfmflist where ormflistid NOT IN %s AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s AND ormffndnameedit in ('edit','noedit');",(str2,entityid,userid,pfdata.get('pfportfolioid'),))
                 print(command)
             else:
                 command = cur.mogrify("DELETE FROM webapp.pfmflist where entityid =%s AND orpfuserid=%s AND orportfolioid= %s;",(entityid,userid,pfdata.get('pfportfolioid'),))
@@ -629,29 +630,39 @@ def mfordervalidate():
         #Model to follow in all fetch
         records=[]
         records_orderids=[]
-        for record in cur:           
-            #print(record[0])
-            records = record[0]           
+        if cur:
+            for record in cur:           
+                #print(record[0])
+                records = record[0]           
         
+        if records is None:
+            records=[]
+
         print(records)
         
-        for record in records:    
-            records_orderids.append(record['mfor_uniquereferencenumber'])
+        has_ontime_record = True
 
-        onetimeorderset = records
-        onetimeorderids = records_orderids
+        if len(records) < 1:
+            has_ontime_record = False
 
-        print(onetimeorderset)
-        print(onetimeorderids)
-        
-        print("ontime multiprocessing validation starts")
-        pool = Pool(processes=10)
-        result = pool.map_async(prepare_order, onetimeorderset)     
-        
-        #for recc in onetimeorderset:       
-        
-        print("printing result")
-        print(result)
+        print("has_ontime_record")
+        print(has_ontime_record)
+        if has_ontime_record:
+            for record in records:    
+                records_orderids.append(record['mfor_uniquereferencenumber'])
+
+            onetimeorderset = records
+            onetimeorderids = records_orderids
+
+            print(onetimeorderset)
+            print(onetimeorderids)
+            
+            print("ontime multiprocessing validation starts")
+            pool = Pool(processes=10)
+            result = pool.map_async(prepare_order, onetimeorderset)           
+            #for recc in onetimeorderset:               
+            print("printing result")
+            print(result)
 
         print("ontime orders processing in progress in other processes.  SIP started in main thread")
         #Fetch the ONE TIME RECORDS for getting orderid from BSE: END
@@ -698,6 +709,7 @@ def mfordervalidate():
             resp = make_response(jsonify(dbqerr), 400)
             return(resp)
         
+        con.commit()
 
         #Call lambda to process SIP : START
         #   Don't wait from lambda response here
@@ -705,85 +717,254 @@ def mfordervalidate():
         #       fetch eligible SIP records
         #       call prepare order to do validation and prepare json
         #       send only sucess records to bse and store the responses
-        #Call lambda to process SIP : END
 
+
+        #Fetch the SIP RECORDS for getting orderid from BSE: START
+
+        ###  this should be a API call in lambda  #####
+        sip_status = mfsiporder.sip_order_processing(userid,entityid)
+        ###  this should be a API call in lambda  #####
+        
+        print(sip_status)
         print("end with SIP")
-        result.wait()        
-        print("end with ontime")
-        print(result.get())        
-        
 
-        pool.close()
-        pool.join()
-        con.commit()
-        str2=tuple(onetimeorderids)
-        print(onetimeorderids)
-        print(str2)   
-        #Fetch the records with their error message and send it back to front end
-        #if no error don't send any record to fronend
-        #if error send all the records to front end
-        command = cur.mogrify("""
-        SELECT json_agg(b) FROM (
-            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
-            LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
-            WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'VAS' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
-            ) AS b;
-        """,(str2,userid,entityid,))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                                
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Validation records fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        print("cur") 
-        print(cur)
-        
-        #Model to follow in all fetch
-        suc_records=[]
-        for record in cur:
-            #print(record)
-            suc_records = record[0]
-        #print("iam printing records to see")
-        
-        command = cur.mogrify("""
-        SELECT json_agg(b) FROM (
-            SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
-            LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
-            WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'VAF' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
-            ) AS b;
-        """,(str2,userid,entityid,))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                                
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Validation records fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        print("cur") 
-        print(cur)
-        
-        #Model to follow in all fetch
-        fai_records=[]
-        for record in cur:
-            #print(record)
-            fai_records = record[0]
-        #print("iam printing records to see")
-        
-        resp_recs={
-            'success_recs': suc_records,
-            'failure_recs': fai_records,
-        }
+        #Call lambda to process SIP : END
+        if has_ontime_record:
+            result.wait()
+            print("end with ontime")
+            print(result.get())
+            pool.close()
+            pool.join()
+            #con.commit()
+            str2=tuple(onetimeorderids)
+            print(onetimeorderids)
+            print(str2)   
+            todt  = datetime.now().strftime('%d-%b-%Y')
+            frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')            
+            
+            # No date is sent as orderids are sent in this call
+            all_recs = fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid,frmdt,todt,'VSF')
+            resp_recs = all_recs['one_time']
+            resp_recs['has_ontime_rec'] = True
+        else:
+            resp_recs = {
+                'one_time' : [],
+                'has_ontime_rec': False
+            }
 
         print(json.dumps(resp_recs))
-
         cur.close()
         con.close()  
 
         return json.dumps(resp_recs)
 
+
+
+@app.route('/mforderdetails',methods=['GET','POST','OPTIONS'])
+#end point to get the sucess failure records for today
+def mforderdetails():
+    if request.method=='OPTIONS':
+        print ("inside mfordinprogress options")
+        return jsonify({'body':'success'})
+
+    elif request.method=='POST':   
+        print ("inside mfordinprogress post")
+        print(request.headers)
+        payload= request.get_json()
+        print(payload)
+        frmdt = payload['fromdate']
+        todt = payload['todate']
+        ord_type = payload['order_type']
+        rectype = payload['record_type']        
+
+        userid,entityid=jwtnoverify.validatetoken(request)
+        
+        con,cur=db.mydbopncon()
+        #frmdt = datetime.now().strftime('%d/%m/%Y')
+        resp_recs = fetchsucfai_recs(con, cur, '%', ord_type, userid, entityid,frmdt,todt,rectype)
+        
+        cur.close()
+        con.close()  
+        return jsonify(resp_recs)
+
+def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =None, todt=None, rectype = 'ALL' ):
+    #Fetch the records with their error message and send it back to front end
+    #if no error don't send any record to fronend
+    #if error send all the records to front end 
+    #-------------------------------- rectype -------------------------------------#
+    #  VAS - (O&S) - Sucess records only ie..mfor_orderstatus = 'VAS' (suc_records)
+    #  VAF - (O&S) - Failed records only ie..mfor_orderstatus = 'VAF' (fai_records)
+    #  VSF - (O&S) - Sucess and Failed records only ie..mfor_orderstatus = 'VAS' & 'VAF' (suc_records & fai_records)
+    #  FAI - (O&S) - BSE Failed records only ie..mfor_orderstatus = 'FAI' (bse_fai_records)
+    #  PPY - (O&S) - Pending payme records only ie..mfor_orderstatus = 'PPY'  (pen_pay_records) [for sip this is SIP registration progress record]
+    #  BFP - (O&S) - BSE Failed and Pending payme records ie..mfor_orderstatus = 'VAF' & 'FAI' & 'PPY' (fai_records, bse_fai_records & pen_pay_records) [for sip this is SIP registration completed record]
+    #  SAS - (S)   - SIP allotment success transaction (equivalent to onetime buy)
+    #  SAF - (S)   - SIP allotment Failure transaction (equivalent to onetime FAI)
+    #  ALL - (O&S) - All of the above records   (suc_records & fai_records & bse_fai_records & pen_pay_records)     #
+    #-------------------------------- rectype -------------------------------------#
+    #-------------------------------- ord_type ---------------------------------------------------------#
+    #  One Time - Sucess records only ie..mfor_ordertype = 'One Time'
+    #  SIP - Failed records only ie..mfor_ordertype = 'SIP'
+    #  ALL - Sucess and Failed records only ie..mfor_orderstatus = mfor_ordertype = 'One Time' & 'SIP'
+    #-------------------------------- ord_type ----------------------------------------------------------#
+    
+    if ord_type == 'ALL':
+        ord_type = tuple(['One Time','SIP'])
+    elif ord_type == 'One Time':
+        ord_type = tuple(['One Time'])
+    elif ord_type == 'SIP':
+        ord_type = tuple(['SIP'])
+
+    todaysdate = datetime.now().strftime('%d-%b-%Y')
+    yestdate = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
+
+
+    if fromdt:
+        if todt:
+            pass 
+        else:
+            todt = todaysdate
+    else:
+        fromdt = yestdate
+        todt = todaysdate
+
+    ot_recs = ''
+    sip_recs= ''
+    print('@@@@@@@@@@@@@@@@@@@fetchsucfai_recs start')
+    print(ord_type)
+    print(rectype)
+    print(orid_tuple)
+    for ordtyp in ord_type:
+        print(ordtyp)
+        if (rectype =='ALL'):
+            suc_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAS')
+            fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
+            bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
+            pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+        elif (rectype =='VAS'):
+            suc_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAS')
+            fai_records = ''
+            bse_fai_records = ''
+            pen_pay_records = ''
+        elif (rectype =='VAF'):
+            suc_records = ''
+            fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
+            bse_fai_records = ''
+            pen_pay_records = ''
+        elif (rectype =='VSF'):
+            print("inside VSF")
+            suc_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAS')
+            fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
+            bse_fai_records = ''
+            pen_pay_records = ''
+        elif (rectype == 'BFP'):
+            print("inside BFP")
+            suc_records = ''
+            fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
+            bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
+            pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+        elif(rectype =='FAI'):
+            suc_records = ''
+            fai_records = ''
+            bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
+            pen_pay_records = ''
+        elif(rectype =='PPY'):
+            suc_records = ''
+            fai_records = ''
+            bse_fai_records = ''
+            pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+
+
+        if suc_records == None or suc_records == '':
+           suc_records = []
+        
+        if fai_records == None or fai_records == '':
+           fai_records = []
+
+        if bse_fai_records == None or bse_fai_records == '':
+           bse_fai_records = [] 
+
+        if pen_pay_records == None or pen_pay_records == '':
+           pen_pay_records = []
+
+
+        if ordtyp == 'One Time':
+            print("inside one time")
+            print(suc_records)
+            print(fai_records)
+            print(bse_fai_records)
+            print(pen_pay_records)
+
+            ot_recs={
+                'success_recs': suc_records,
+                'failure_recs': fai_records,
+                'bse_failure_recs': bse_fai_records,
+                'paypending_recs': pen_pay_records
+            }
+            sip_recs =''
+        elif ordtyp == 'SIP':
+            ot_recs = ''
+            sip_recs={
+                'success_recs': suc_records,
+                'failure_recs': fai_records,
+                'bse_failure_recs': bse_fai_records,
+                'reg_in_prog_recs': pen_pay_records
+            }
+
+    resp_recs = {
+        'one_time' : ot_recs,
+        'sip' : sip_recs
+    }
+    print(resp_recs)
+    print('@@@@@@@@@@@@@@@@@@@fetchsucfai_recs')
+    return resp_recs
+
+
+def one_fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt, todt, rectype):
+
+
+# Don't call this directly, call this function via fetchsucfai_recs
+    qry = "SELECT json_agg(b) FROM ("
+    qry = qry + " SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode,X.mfor_orderid FROM webapp.mforderdetails X"
+    qry = qry + " LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)"        
+    qry = qry + " WHERE mfor_ordertype = %s"
+
+    if orid_tuple == '%':
+        qry = qry + " AND mfor_uniquereferencenumber like %s"
+    elif orid_tuple:
+        qry = qry + " AND mfor_uniquereferencenumber in %s"
+
+    
+    qry = qry + " AND mfor_orderstatus = %s"
+    qry = qry + " AND mfor_pfuserid = %s AND mfor_entityid =%s"
+    qry = qry + " AND date(mfor_orderoctime) BETWEEN %s AND %s"
+    qry = qry + " ORDER BY Y.orpfportfolioname,Y.orormffundname"
+    qry = qry + " ) AS b;"
+    
+    if orid_tuple:
+        command = cur.mogrify(qry,(ord_type,orid_tuple,rectype,userid,entityid,fromdt,todt,))
+    else:
+        command = cur.mogrify(qry,(ord_type,rectype,userid,entityid,fromdt,todt,))
+
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+                            
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            dbqerr['statusdetails']="Validation records fetch failed"
+        resp = make_response(jsonify(dbqerr), 400)
+        return(resp)
+    print("cur") 
+    print(cur)
+    
+    #Model to follow in all fetch
+    records=[]
+    for record in cur:
+        #print(record)
+        records = record[0]
+    #print("iam printing records to see")(self, parameter_list):
+    
+    return records
 
 @app.route('/mfordersubmit',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
@@ -827,8 +1008,11 @@ def mfordersubmit():
 
         print(orders)
         order_records = json.dumps(orders)
-
+        
+        ###  this should be a API call in lambda  #####
         orderresp = mforderapi.place_order_bse(order_records)
+        ###  this should be a API call in lambda  #####
+
         print(orderresp)
         #Add code to update the order id
 
@@ -869,87 +1053,37 @@ def mfordersubmit():
             cur, dbqerr = db.mydbfunc(con,cur,command)
             con.commit()
 
-            '''       
-            Do Not send any response for DB update failures.                         
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="Fund MAX sequence failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            '''
         if orderres['order_type'] == 'OneTime':
             str2 = tuple(ot_orderids)           
+            
+            frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
+            todt = datetime.now().strftime('%d-%b-%Y')
 
-            command = cur.mogrify("""
-            SELECT json_agg(b) FROM (
-                SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_orderid,X.mfor_clientcode FROM webapp.mforderdetails X
-                LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
-                WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'PPY' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
-                ) AS b;
-            """,(str2,userid,entityid,))
-            print(command)
-            cur, dbqerr = db.mydbfunc(con,cur,command)
-                                    
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="Validation records fetch failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            print("cur") 
-            print(cur)
-            
-            #Model to follow in all fetch
-            suc_records=[]
-            for record in cur:
-                #print(record)
-                suc_records = record[0]
-            #print("iam printing records to see")
-            
-            command = cur.mogrify("""
-            SELECT json_agg(b) FROM (
-                SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode FROM webapp.mforderdetails X
-                LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)
-                WHERE mfor_ordertype = 'One Time' AND mfor_uniquereferencenumber in %s AND mfor_orderstatus = 'FAI' AND mfor_pfuserid = %s AND mfor_entityid =%s ORDER BY Y.orpfportfolioname,Y.orormffundname
-                ) AS b;
-            """,(str2,userid,entityid,))
-            print(command)
-            cur, dbqerr = db.mydbfunc(con,cur,command)
-                                    
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="Validation records fetch failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            print("cur") 
-            print(cur)
-            
-            #Model to follow in all fetch
-            fai_records=[]
-            for record in cur:
-                #print(record)
-                fai_records = record[0]
-            #print("iam printing records to see")
-            
+            all_recs = fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid, frmdt, todt, 'BFP')
+            print('*******************ord_type')
+            print(orderres['order_type'])
+            print(str2)
+            print(all_recs)
+            print('*******************ord_type')
+
+            resp_recs = all_recs
+            '''
             resp_recs={
-                'success_recs': suc_records,
-                'failure_recs': fai_records,
+                'success_recs': all_records['suc_records,
+                'failure_recs': fai_records
             }
-
+            '''
             print(json.dumps(resp_recs))
-
-            cur.close()
-            con.close()  
-
+            
         elif orderres['order_type'] == 'SIP':
             resp_recs = {
                 'status' : 'completed',
                 'sip_orderids': sip_orderids
                 }
-
-    return json.dumps(resp_recs)
-
-
-
+               
+        cur.close()
+        con.close()  
+        return json.dumps(resp_recs)
 
 
 @app.route('/mforderpayment',methods=['GET','POST','OPTIONS'])
@@ -982,7 +1116,13 @@ def mforderpayment():
         }
         
         # FOR BSE PAYMENT LINK : START
-        url_pay=mforderapi.get_payment_link_bse1(record_to_submit)
+
+        url_pay=mforderapi.get_payment_link_bse(record_to_submit)
+        print(url_pay)
+
+        if (url_pay['status']=='failed'):
+            url_pay = None
+            url_pay=mforderapi.get_payment_link_bse1(record_to_submit)
         #Code to be re-written to include http call
         '''
         url=settings.BSESTAR_USERCREATION_URL[settings.LIVE];
@@ -997,57 +1137,43 @@ def mforderpayment():
         # FOR BSE PAYMENT LINK : END
         
         # FOR DIRECT BANK PAYMENT LINK
-        #url_pay=mforderapi.get_payment_link_bse(record_to_submit)
-        
-        #return status from get_payment_link_bse1
-        if((url_pay['status'] == 'success') and (url_pay['url_type'] == 'bsepayurl')):
-            print("url_pay")
-            print(type(url_pay['payment_url']))
-            returns = {'html' : url_pay['payment_url']}
-            return jsonify(returns)
-        else:        
-            return url_pay
-
-        ##return status from get_payment_link_bse
-        if((url_pay['status'] == 'success') and (url_pay['url_type'] == 'directbnkurl')):
-            pass
-        else:
-            pass
         
         
-        #r = Response(response=url_pay, status=200, mimetype="text/html")
-        #r.headers["Content-Type"] = "text/html; charset=utf-8"
-        #return r
-        #return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
-        '''
-        con,cur=db.mydbopncon()
-
-
-
-
-
-        command = cur.mogrify("""
-                    SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
-                    """,(str,userid,entityid,))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="DB query failed, BEGIN failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
+    return jsonify(url_pay)
         
-        #Model to follow in all fetch
-        orders=[]
-        for record in cur:
-            print(record[0])
-            orders.append(record[0])
+    #r = Response(response=url_pay, status=200, mimetype="text/html")
+    #r.headers["Content-Type"] = "text/html; charset=utf-8"
+    #return r
+    #return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    '''
+    con,cur=db.mydbopncon()
 
-        print(orders)
-        one_time_records = json.dumps(orders)
+
+
+
+
+    command = cur.mogrify("""
+                SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                """,(str,userid,entityid,))
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            dbqerr['statusdetails']="DB query failed, BEGIN failed"
+        resp = make_response(jsonify(dbqerr), 400)
+        return(resp)
     
-        return "ok"
-        '''
+    #Model to follow in all fetch
+    orders=[]
+    for record in cur:
+        print(record[0])
+        orders.append(record[0])
+
+    print(orders)
+    one_time_records = json.dumps(orders)
+
+    return "ok"
+    '''
 
 
 def dateformat1(datestr):
@@ -1296,6 +1422,7 @@ def prepare_onetime_ord(ord):
     print(data_dict)
     print('####################')
     print(haserror)
+
     if haserror:
         return (True , errormsg)
     else:
@@ -1364,6 +1491,11 @@ def prepare_isip_ord(ord):
     else:
         data_dict['folio_no'] = ''
 
+
+    #for testing lines
+    ord['mfor_sipmandateid'] = 'BSE000000016247'
+    #for testing lines
+
     if(ord['mfor_sipmandateid']):
         data_dict['isip_mandate_id'] = ord['mfor_sipmandateid']
     else:
@@ -1395,16 +1527,18 @@ def prepare_isip_ord(ord):
     else:
         data_dict['ipadd'] = ''
 
+
+
+
+
+
     if haserror:
         return (True , errormsg)
     else:
         return( False, json.dumps(data_dict))
 
 
-# function to VALIDATE and CREATE data for ISIP order
-def prepare_pay_lnk_rec(ord):
-    #Prepares record to get payment link
-    haserror = False
+
 
 
 

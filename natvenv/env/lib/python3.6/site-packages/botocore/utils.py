@@ -19,6 +19,7 @@ import binascii
 import functools
 import weakref
 import random
+import os
 
 import dateutil.parser
 from dateutil.tz import tzlocal, tzutc
@@ -41,10 +42,6 @@ METADATA_SECURITY_CREDENTIALS_URL = (
 # Based on rfc2986, section 2.3
 SAFE_CHARS = '-._~'
 LABEL_RE = re.compile(r'[a-z0-9][a-z0-9\-]*[a-z0-9]')
-RESTRICTED_REGIONS = [
-    'us-gov-west-1',
-    'fips-us-gov-west-1',
-]
 RETRYABLE_HTTP_ERRORS = (requests.Timeout, requests.ConnectionError)
 S3_ACCELERATE_WHITELIST = ['dualstack']
 
@@ -163,12 +160,21 @@ def set_value_from_jmespath(source, expression, value, is_first=True):
 
 class InstanceMetadataFetcher(object):
     def __init__(self, timeout=DEFAULT_METADATA_SERVICE_TIMEOUT,
-                 num_attempts=1, url=METADATA_SECURITY_CREDENTIALS_URL):
+                 num_attempts=1, url=METADATA_SECURITY_CREDENTIALS_URL,
+                 env=None):
         self._timeout = timeout
         self._num_attempts = num_attempts
         self._url = url
+        if env is None:
+            env = os.environ.copy()
+        self._disabled = env.get('AWS_EC2_METADATA_DISABLED', 'false').lower()
+        self._disabled = self._disabled == 'true'
 
     def _get_request(self, url, timeout, num_attempts=1):
+        if self._disabled:
+            logger.debug("Access to EC2 metadata has been disabled.")
+            raise _RetriesExceededError()
+
         for i in range(num_attempts):
             try:
                 response = requests.get(url, timeout=timeout)
@@ -197,7 +203,8 @@ class InstanceMetadataFetcher(object):
                         val = self._get_request(
                             url + field,
                             timeout=timeout,
-                            num_attempts=num_attempts).content.decode('utf-8')
+                            num_attempts=num_attempts,
+                        ).content.decode('utf-8')
                         if val[0] == '{':
                             val = json.loads(val)
                         data[field] = val
@@ -672,23 +679,18 @@ def check_dns_name(bucket_name):
 
 
 def fix_s3_host(request, signature_version, region_name,
-                default_endpoint_url='s3.amazonaws.com', **kwargs):
+                default_endpoint_url=None, **kwargs):
     """
     This handler looks at S3 requests just before they are signed.
     If there is a bucket name on the path (true for everything except
     ListAllBuckets) it checks to see if that bucket name conforms to
     the DNS naming conventions.  If it does, it alters the request to
     use ``virtual hosting`` style addressing rather than ``path-style``
-    addressing.  This allows us to avoid 301 redirects for all
-    bucket names that can be CNAME'd.
+    addressing.
+
     """
-    # By default we do not use virtual hosted style addressing when
-    # signed with signature version 4.
-    if signature_version is not botocore.UNSIGNED and \
-            's3v4' in signature_version:
-        return
-    elif not _allowed_region(region_name):
-        return
+    if request.context.get('use_global_endpoint', False):
+        default_endpoint_url = 's3.amazonaws.com'
     try:
         switch_to_virtual_host_style(
             request, signature_version, default_endpoint_url)
@@ -763,10 +765,6 @@ def switch_to_virtual_host_style(request, signature_version,
 
 def _is_get_bucket_location_request(request):
     return request.url.endswith('?location')
-
-
-def _allowed_region(region_name):
-    return region_name not in RESTRICTED_REGIONS
 
 
 def instance_cache(func):
@@ -901,17 +899,29 @@ class S3RegionRedirector(object):
             # transport error.
             return
 
+        if request_dict.get('context', {}).get('s3_redirected'):
+            logger.debug(
+                'S3 request was previously redirected, not redirecting.')
+            return
+
         error = response[1].get('Error', {})
         error_code = error.get('Code')
 
-        if error_code == '301':
-            # A raw 301 error might be returned for several reasons, but we
-            # only want to try to redirect it if it's a HeadObject or
-            # HeadBucket  because all other operations will return
-            # PermanentRedirect if region is incorrect.
-            if operation.name not in ['HeadObject', 'HeadBucket']:
-                return
-        elif error_code != 'PermanentRedirect':
+        # We have to account for 400 responses because
+        # if we sign a Head* request with the wrong region,
+        # we'll get a 400 Bad Request but we won't get a
+        # body saying it's an "AuthorizationHeaderMalformed".
+        is_special_head_object = (
+            error_code in ['301', '400'] and
+            operation.name in ['HeadObject', 'HeadBucket']
+        )
+        is_wrong_signing_region = (
+            error_code == 'AuthorizationHeaderMalformed' and
+            'Region' in error
+        )
+        is_permanent_redirect = error_code == 'PermanentRedirect'
+        if not any([is_special_head_object, is_wrong_signing_region,
+                    is_permanent_redirect]):
             return
 
         bucket = request_dict['context']['signing']['bucket']
@@ -942,6 +952,8 @@ class S3RegionRedirector(object):
 
         self._cache[bucket] = signing_context
         self.set_request_url(request_dict, request_dict['context'])
+
+        request_dict['context']['s3_redirected'] = True
 
         # Return 0 so it doesn't wait to retry
         return 0

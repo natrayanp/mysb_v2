@@ -173,7 +173,7 @@ class ReadOnlyScoped(object):
 
         if credentials.requires_scopes:
             # Scoping is required.
-            credentials = credentials.create_scoped(['one', 'two'])
+            credentials = credentials.with_scopes(scopes=['one', 'two'])
 
     Credentials that require scopes must either be constructed with scopes::
 
@@ -208,6 +208,9 @@ class ReadOnlyScoped(object):
 
         .. warning: This method is not guaranteed to be accurate if the
             credentials are :attr:`~Credentials.invalid`.
+
+        Args:
+            scopes (Sequence[str]): The list of scopes to check.
 
         Returns:
             bool: True if the credentials have the given scopes.
@@ -248,7 +251,8 @@ class Scoped(ReadOnlyScoped):
         """Create a copy of these credentials with the specified scopes.
 
         Args:
-            scopes (Sequence[str]): The list of scopes to request.
+            scopes (Sequence[str]): The list of scopes to attach to the
+                current credentials.
 
         Raises:
             NotImplementedError: If the credentials' scopes can not be changed.

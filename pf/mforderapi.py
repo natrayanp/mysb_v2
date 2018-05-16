@@ -118,12 +118,15 @@ def send_one_order(bse_order):
         print('****************************')
     
 
-    elif(bse_order.order_type == 'SIP'):
+    elif(bse_order['mfor_ordertype'] == 'SIP'):
         ## since xsip orders cannot be placed in off-market hours, 
         ## placing a lumpsum order instead 
         #bse_order = prepare_xsip_order(transaction, pass_dict)
         ## post the transaction
-        order_resp = soap_post_xsip_order(client, bse_order)
+        del bse_order['mfor_ordertype']
+        order_resp = soap_post_isip_order(client, bse_order)
+        print(order_resp)
+
 
     else:
         '''
@@ -142,6 +145,7 @@ def send_one_order(bse_order):
             'success_flag' :100,
             'order_type' : '',
         }
+    
     return order_resp
 
 def soap_get_password_order(client):
@@ -254,42 +258,42 @@ def soap_post_onetime_order(client, bse_order):
 
 
 ## fire SOAP query to post the XSIP order 
-def soap_post_xsip_order(client, bse_order):
+def soap_post_isip_order(client, bse_order):
     method_url = settings.METHOD_ORDER_URL[settings.LIVE] + 'xsipOrderEntryParam'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_ORDER_URL[settings.LIVE])
     response = client.service.xsipOrderEntryParam(
-        bse_order.trans_code,
-        bse_order.trans_no,
-        bse_order.scheme_cd,
-        bse_order.member_id,
-        bse_order.client_code,
-        bse_order.user_id,
-        bse_order.int_ref_no,
-        bse_order.trans_mode,
-        bse_order.dp_txn,
-        bse_order.start_date,
-        bse_order.freq_type,
-        bse_order.freq_allowed,
-        bse_order.inst_amt,
-        bse_order.num_inst,
-        bse_order.remarks,
-        bse_order.folio_no,
-        bse_order.first_order_flag,
-        bse_order.brokerage,
-        bse_order.mandate_id,
+        bse_order['trans_code'],
+        bse_order['trans_no'],
+        bse_order['scheme_cd'],
+        bse_order['member_id'],
+        bse_order['client_code'],
+        bse_order['user_id'],
+        bse_order['internal_transaction'],
+        bse_order['trans_mode'],
+        bse_order['dptxn_mode'],
+        bse_order['start_date'],
+        bse_order['freq_type'],
+        bse_order['freq_allowed'],
+        bse_order['order_amt'],
+        bse_order['num_of_instalment'],
+        bse_order['Remarks'],
+        bse_order['folio_no'],
+        bse_order['first_ord_flg'],
+        bse_order['borkerage'],  
+        bse_order['xsip_mandate_id'],      
         # '',
-        bse_order.sub_br_code,
-        bse_order.euin,
-        bse_order.euin_val,
-        bse_order.dpc,
-        bse_order.xsip_reg_id,
-        bse_order.ip_add,
-        bse_order.password,
-        bse_order.pass_key,
-        bse_order.param1,
+        bse_order['subbr_code'],
+        bse_order['euin'],
+        bse_order['euin_flg'],
+        bse_order['dpc_flg'],
+        bse_order['xsip_reg_id'],
+        bse_order['ipadd'],
+        bse_order['password'],
+        bse_order['pass_key'],
+        bse_order['subbr_arn'],
         # bse_order.mandate_id,
-        bse_order.param2,
-        bse_order.param3,
+        bse_order['isip_mandate_id'],
+        bse_order['Param3'],
         _soapheaders=[header_value]
     )
 
@@ -297,15 +301,20 @@ def soap_post_xsip_order(client, bse_order):
 
     response = response.split('|')
     ## store the order response in a table
-    order_id = store_order_response(response, 'SIP')
+    order_resp = store_order_response(response, 'SIP')
     status = response[7]
     if (status == '0'):
         # order successful
-        return order_id
+        #return order_id
+        print("order successful")
     else:
+        print("order failure")
+        '''
         raise Exception(
             "BSE error 642: %s" % response[6]
         )
+        '''
+    return order_resp
 
 
 def get_payment_link_bse(payload):
@@ -416,14 +425,14 @@ def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dic
 
     method_url = settings.METHOD_PAYLNK_URL[settings.LIVE] + 'PaymentGatewayAPI'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_PAYLNK_URL[settings.LIVE])
-    logout_url = 'http://localhost:8000/orpost'
+    #logout_url = 'http://localhost:8000/orpost'
     response = client.service.PaymentGatewayAPI({
         'AccNo':'123456789123',
         'BankID': 'ICI',
         'ClientCode': client_code,
         'EncryptedPassword': pass_dict['password'],
         'IFSC':'ICIC0000001',
-        'LogOutURL':logout_url,
+        'LogOutURL':settings.LOGOUTURL[settings.LIVE],
         'MemberCode':settings.MEMBERID[settings.LIVE],
         'Mode':'DIRECT',
         #'Orders':{"string": transaction_id},
@@ -436,17 +445,33 @@ def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dic
     print(response)
     #response = response.split('|')
     #status = response[0]
-
+    payment_url = response.ResponseString.replace('\n', ' ').replace('\r', '')
     if (response.Status == '100'):
         # getting payment url successful
-        payment_url = response.ResponseString
+        #payment_url = response.ResponseString
 
-        return payment_url
+
+        response_string = { 
+            'payment_url':payment_url,
+            'status': 'success',
+            'url_type' : 'dirpayhtml'
+            }
+        print(response_string)
+        return response_string
+    else:
+        response_string = { 
+            'payment_url':'',
+            'status': 'failed',
+            'url_type' : 'dirpayhtml'
+            }
+
+        return response_string
+    '''
     else:
         raise Exception(
             "BSE error 646: Payment link creation unsuccessful: %s" % response.ResponseString
         )
-
+    '''
 
 # every soap query to bse must have wsa headers set 
 def soap_set_wsa_headers(method_url, svc_url):    
@@ -866,12 +891,12 @@ def get_payment_link_bse1(payload):
 def soap_create_payment1(client, client_code,  pass_dict):
     method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_UPLOAD_URL[settings.LIVE])
-    logout_url = 'http://localhost:8000/orpost'
+    #logout_url = 'http://localhost:8000/orpost'
     response = client.service.MFAPI(
         '03',
         settings.USERID[settings.LIVE],
         pass_dict['password'],
-        settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
+        settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+settings.LOGOUTURL[settings.LIVE],
         _soapheaders=[header_value]
     )
     print
