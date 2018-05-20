@@ -18,6 +18,7 @@ from multiprocessing import Pool
 from pf import mforderapi
 from pf import mfsiporder
 import requests
+from pf import webapp_settings
 
 import psycopg2
 import json
@@ -100,7 +101,9 @@ def mfordersave():
 
     elif request.method=='POST':   
         print ("inside mfordersave post")
-
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(request.content_length)
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print(request.headers)
         payload= request.get_json()
         #payload = request.stream.read().decode('utf8')    
@@ -539,6 +542,7 @@ def mfordersave():
     #clearuppostsave(pfmflsdatalist,pfmforlsdatalist,entityid,userid,pfdata)
     cur.close()
     con.close()
+
     return jsonify({'natstatus':'success','statusdetails':'Order details for ' + userid +' Saved/Updated'})
 
 
@@ -553,12 +557,20 @@ def mfordervalidate():
         print ("inside mfordervalidate post")
 
         print(request.headers)
-        payload= request.get_json()
+        payload_org= request.get_json()
         #payload = request.stream.read().decode('utf8')    
+        print(payload_org)
+
+        one_time_pay_details = payload_org['one_time_pay']
+        sip_pay_details = payload_org['sip_pay']  #Not required for one time
+        payload = payload_org['succrecs']
         
-        pfdatas = payload
-        print(pfdatas)
-        
+        if sip_pay_details is None or sip_pay_details == '':
+            sip_pay_details = {}
+            sip_pay_details['mandate_id'] = ''
+            sip_pay_details['mandate_type'] = '' 
+
+
         userid,entityid=jwtnoverify.validatetoken(request)
         con,cur=db.mydbopncon()
 
@@ -663,6 +675,8 @@ def mfordervalidate():
             #for recc in onetimeorderset:               
             print("printing result")
             print(result)
+            print(sip_pay_details)
+            print(one_time_pay_details)
 
         print("ontime orders processing in progress in other processes.  SIP started in main thread")
         #Fetch the ONE TIME RECORDS for getting orderid from BSE: END
@@ -679,15 +693,15 @@ def mfordervalidate():
         command = cur.mogrify("""
             INSERT INTO webapp.mforderdetails(mfor_prodcuttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,
             mfor_amount,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,mfor_sipstartdate,mfor_freqencytype,mfor_numofinstallment,mfor_foliono,
-            mfor_orderoctime,mfor_orderlmtime,mfor_entityid) 
+            mfor_orderoctime,mfor_orderlmtime,mfor_entityid,mfor_sipmandateid,mfor_sipmandatetype) 
             SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS','P','P',ororpfuserid,B.clientcode,orormffndcode,
             ormffundordelsamt,C.lguserkycstatus,'','N','N',C.lguseripaddress,ormffundordelsstdt,ormffundordelsfreq,ormfsipinstal,D.fopfamcfolionumber,
-            CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid from webapp.pfmforlist A 
+            CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid,%s,%s from webapp.pfmforlist A 
             LEFT OUTER JOIN webapp.uccclientmaster B ON (A.ororpfuserid = B.ucclguserid AND A.entityid = B.uccentityid) 
             LEFT OUTER JOIN webapp.userlogin C ON (A.ororpfuserid = C.lguserid AND A.entityid = C.lgentityid) 
             LEFT OUTER JOIN webapp.mffoliodetails D ON (A.ororfndamcnatcode = D.foamcnatcode AND A.entityid = D.foentityid) 
             where ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
-        """,(userid,entityid,))
+        """,(sip_pay_details['mandate_id'],sip_pay_details['mandate_type'],userid,entityid,))
                             
         
         print(command)
@@ -722,7 +736,12 @@ def mfordervalidate():
         #Fetch the SIP RECORDS for getting orderid from BSE: START
 
         ###  this should be a API call in lambda  #####
-        sip_status = mfsiporder.sip_order_processing(userid,entityid)
+        sip_data_for_processing = {
+            'userid' : userid,
+            'entityid' : entityid,
+            #'sip_mandate_details': sip_pay_details
+        }
+        sip_status = mfsiporder.sip_order_processing(sip_data_for_processing)
         ###  this should be a API call in lambda  #####
         
         print(sip_status)
@@ -744,11 +763,15 @@ def mfordervalidate():
             
             # No date is sent as orderids are sent in this call
             all_recs = fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid,frmdt,todt,'VSF')
-            resp_recs = all_recs['one_time']
+            resp_recs = all_recs
+            #resp_recs = all_recs['one_time']
             resp_recs['has_ontime_rec'] = True
         else:
             resp_recs = {
-                'one_time' : [],
+                'val_success_recs' : [],
+                'paypending_recs' : [],
+                'failure_recs': [],
+                'bse_failure_recs' : [],
                 'has_ontime_rec': False
             }
 
@@ -896,7 +919,7 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
             print(pen_pay_records)
 
             ot_recs={
-                'success_recs': suc_records,
+                'val_success_recs': suc_records,
                 'failure_recs': fai_records,
                 'bse_failure_recs': bse_fai_records,
                 'paypending_recs': pen_pay_records
@@ -977,8 +1000,17 @@ def mfordersubmit():
         print ("inside mfordersubmit post")
 
         print(request.headers)
-        payload= request.get_json()
+ 
+        payload_org= request.get_json()
         #payload = request.stream.read().decode('utf8')    
+        print(payload_org)
+
+        one_time_pay_details = payload_org['one_time_pay']
+        sip_pay_details = payload_org['sip_pay']  #Not required for one time
+        payload = payload_org['succrecs']
+        userid = payload_org['userid']
+        entityid = payload_org['entityid']
+
 
         ord_ids=[]
         for payld in payload:
@@ -986,7 +1018,13 @@ def mfordersubmit():
 
         str=tuple(ord_ids)
         print(str)
-        userid,entityid=jwtnoverify.validatetoken(request)
+
+        if userid is None or userid == '':
+            userid,entityid=jwtnoverify.validatetoken(request)
+        
+        if entityid is None or entityid == '':
+            userid,entityid=jwtnoverify.validatetoken(request)
+
         con,cur=db.mydbopncon()
 
         command = cur.mogrify("""
@@ -1096,9 +1134,13 @@ def mforderpayment():
         print ("inside mforderpayment post")
 
         print(request.headers)
-        payload= request.get_json()
+        payload_org= request.get_json()
         #payload = request.stream.read().decode('utf8')    
-        print(payload)
+        print(payload_org)
+
+        one_time_pay_details = payload_org['one_time_pay']
+        #sip_pay_details = payload_org['sip_pay']  #Not required for one time
+        payload = payload_org['succrecs']
 
         ord_ids=[]
         total_amt = 0
@@ -1112,69 +1154,30 @@ def mforderpayment():
         record_to_submit = {
             'client_code' : payload[0]['mfor_clientcode'],
             'transaction_ids' : ord_ids,
-            'total_amt': total_amt
+            'total_amt': total_amt,
+            'acc_num': one_time_pay_details['acnum'],
+            'bank_id': one_time_pay_details['bank_id'],
+            'ifsc': one_time_pay_details['ifsc'],
+            'logout_url': webapp_settings.LOGOUTURL[webapp_settings.LIVE],
+            'mode': one_time_pay_details['mode'],
+            'mandate_id':''
         }
-        
-        # FOR BSE PAYMENT LINK : START
 
+        # FOR BSE PAYMENT LINK : START
+        print('record_to_submit')
+        print(record_to_submit)
         url_pay=mforderapi.get_payment_link_bse(record_to_submit)
+        print('url_pay')
         print(url_pay)
 
         if (url_pay['status']=='failed'):
             url_pay = None
-            url_pay=mforderapi.get_payment_link_bse1(record_to_submit)
+            url_pay = mforderapi.get_payment_link_bse1(record_to_submit)
         #Code to be re-written to include http call
-        '''
-        url=settings.BSESTAR_USERCREATION_URL[settings.LIVE];
-        print(url)
-        print(record_to_submit)
-        
-        r = requests.post(url, json=record_to_submit)
-        print(r.text)
-        url_pay= json.loads(r.text)   
-        print('url_pay :',url_pay)     
-        '''
         # FOR BSE PAYMENT LINK : END
         
-        # FOR DIRECT BANK PAYMENT LINK
-        
-        
     return jsonify(url_pay)
-        
-    #r = Response(response=url_pay, status=200, mimetype="text/html")
-    #r.headers["Content-Type"] = "text/html; charset=utf-8"
-    #return r
-    #return url_pay, 200, {'Content-Type': 'text/html; charset=utf-8'}
-    '''
-    con,cur=db.mydbopncon()
-
-
-
-
-
-    command = cur.mogrify("""
-                SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
-                """,(str,userid,entityid,))
-    print(command)
-    cur, dbqerr = db.mydbfunc(con,cur,command)
-    if cur.closed == True:
-        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-            dbqerr['statusdetails']="DB query failed, BEGIN failed"
-        resp = make_response(jsonify(dbqerr), 400)
-        return(resp)
-    
-    #Model to follow in all fetch
-    orders=[]
-    for record in cur:
-        print(record[0])
-        orders.append(record[0])
-
-    print(orders)
-    one_time_records = json.dumps(orders)
-
-    return "ok"
-    '''
-
+  
 
 def dateformat1(datestr):
 #code to convert the date from UTC to IST
@@ -1204,7 +1207,7 @@ def dateformat1(datestr):
 # Main function to prepare and submit Transaction to BSE
 def prepare_order(orderrecord):
     ord=orderrecord
-    print("processing order" + ord['mfor_uniquereferencenumber'])
+    print("processing order " + ord['mfor_uniquereferencenumber'] + " ordrtype is " + ord['mfor_ordertype'])
     #time.sleep(0.5)
     #return json.dumps({'mfor_uniquereferencenumber': ord['mfor_uniquereferencenumber'],'order_id': '','amount':ord['mfor_amount']})
     
@@ -1230,7 +1233,15 @@ def prepare_order(orderrecord):
                 orderstat = 'FAI'
         '''
     elif(ord['mfor_ordertype'] == 'SIP'):
-        has_error, order_json = prepare_isip_ord(ord)
+        if ord['mfor_sipmandatetype'] == 'I':
+            has_error, order_json = prepare_isip_ord(ord)
+        elif ord['mfor_sipmandatetype'] == 'X':
+            #has_error, order_json = prepare_xsip_ord(ord)
+            pass
+        elif ord['mfor_sipmandatetype'] == 'E':
+            #has_error, order_json = prepare_esip_ord(ord)
+            pass
+
         '''
         if has_error:
             pass
@@ -1373,8 +1384,13 @@ def prepare_onetime_ord(ord):
         data_dict['buy_sell'] = 'P'
         data_dict['order_id'] = ''
 
+        
         if(ord['mfor_amount']):
-            data_dict['order_amt'] = ord['mfor_amount']
+            if (ord['mfor_amount'] <= 0 ):
+                haserror = True
+                errormsg = errormsg + "ORDER amount is zero or negative: " 
+            else:
+                data_dict['order_amt'] = ord['mfor_amount']
         else:
             haserror = True
             errormsg = errormsg + "Missing ORDER amount: " 
@@ -1447,11 +1463,12 @@ def prepare_isip_ord(ord):
         'Remarks' : '',
         'first_ord_flg' : 'N',
         'borkerage' : '',
-        'xsip_mandate_id' : '',
         'dpc_flg' : 'N',
         'xsip_reg_id' : '',        
         'Param3' : '',
-        'mfor_ordertype': 'SIP'
+        'xsip_mandate_id': '',
+        #The below 2 recs should be deleted in API before sending to BSE.
+        'mfor_ordertype': 'SIP',
     }
 
     if(ord['mfor_internalrefnum']):
@@ -1493,14 +1510,39 @@ def prepare_isip_ord(ord):
 
 
     #for testing lines
-    ord['mfor_sipmandateid'] = 'BSE000000016247'
+    #ord['mfor_sipmandateid'] = 'BSE000000016247'
     #for testing lines
+    '''
+    if (ord['mfor_sipmandatetype'] == 'XSIP'):
+        data_dict['isip_mandate_id'] = ''
+        if(ord['mfor_sipmandateid']):
+            data_dict['xsip_mandate_id'] = ord['mfor_sipmandateid']            
+        else:
+            haserror = True
+            errormsg = errormsg + "Missing XSIP Mandate id: " 
+
+
+    if (ord['mfor_sipmandatetype'] == 'ESIP'):
+        data_dict['xsip_mandate_id'] = ''
+        if(ord['mfor_sipmandateid']):
+            data_dict['isip_mandate_id'] = ord['mfor_sipmandateid']
+        else:
+            haserror = True
+            errormsg = errormsg + "Missing ESIP Mandate id: " 
+    '''
 
     if(ord['mfor_sipmandateid']):
         data_dict['isip_mandate_id'] = ord['mfor_sipmandateid']
     else:
         haserror = True
         errormsg = errormsg + "Missing ISIP Mandate id: " 
+
+    if(ord['mfor_sipmandatetype']):
+        data_dict['mfor_sipmandatetype'] = ord['mfor_sipmandatetype']
+    else:
+        haserror = True
+        errormsg = errormsg + "Missing SIP Mandate type: " 
+
 
     if(ord['mfor_subbrcode']):
         data_dict['subbr_code'] = ord['mfor_subbrcode']
@@ -1528,18 +1570,28 @@ def prepare_isip_ord(ord):
         data_dict['ipadd'] = ''
 
 
-
-
-
-
     if haserror:
         return (True , errormsg)
     else:
         return( False, json.dumps(data_dict))
 
+'''
+def get_payment_status_bse(client_code, transaction_id):
+'''
+#Gets whether user has paid for a transaction created on BSEStar
+'''
 
+## initialise the zeep client for wsdl
+client = zeep.Client(wsdl=WSDL_UPLOAD_URL[settings.LIVE])
+set_soap_logging()
 
+## get the password
+pass_dict = soap_get_password_upload(client)
 
+## get payment status
+payment_status = soap_get_payment_status(client, client_code, transaction_id, pass_dict)
+return payment_status
+'''
 
 
 

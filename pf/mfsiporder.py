@@ -27,7 +27,7 @@ import time
 
 #@app.route('/mfsiporder',methods=['POST','GET','OPTIONS'])
 #def sip_order_processing():
-def sip_order_processing(userid,entityid):
+def sip_order_processing(sip_data_for_processing):
 #This is called for sip processing
     '''
     if request.method=='OPTIONS':
@@ -38,11 +38,19 @@ def sip_order_processing(userid,entityid):
         print("inside sip_order_processing GET")
         print((request))        
         print(request.headers)
+        payload_org= request.get_json()
+        sip_pay 
+        print(payload_org)
         userid,entityid=jwtnoverify.validatetoken(request)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    '''
-    print(userid,entityid)
 
+    '''
+    payload_org = sip_data_for_processing
+    #sip_mandate_details = payload_org['sip_mandate_details']
+    userid = payload_org['userid']
+    entityid = payload_org['entityid']
+
+    print(userid,entityid)
     
     con,cur=db.mydbopncon()
 
@@ -64,13 +72,15 @@ def sip_order_processing(userid,entityid):
     
     if cur:
         for record in cur:           
-            sip_records = record[0]           
+            sip_records = record[0]
     
     if sip_records is None:
         sip_records = []
     print(sip_records)
-
+    print("len(sip_records")
+    print(len(sip_records))
     if len(sip_records) > 0:    
+        print("i am insider sip records")
         for record in sip_records:    
             sip_records_orderids.append(record['mfor_uniquereferencenumber'])
 
@@ -95,7 +105,16 @@ def sip_order_processing(userid,entityid):
         resp_suc_recs = resp_recs['success_recs']
         
         ###  this should be a API call in lambda  #####
-        recs = mfordersubmit_cpy(resp_suc_recs,cur,con,userid,entityid,)
+        sip_submit_rec = {
+            'sip_pay':'',
+            'one_time_pay' : '',
+            'succrecs' : resp_suc_recs,
+            'userid': userid,
+            'entityid': entityid
+        }
+ 
+        
+        recs = mfordersubmit_cpy(sip_submit_rec)
         ###  this should be a API call in lambda  #####
     
     else:
@@ -122,16 +141,32 @@ def sip_prepare_order(orderrecord):
 
 
 
-def mfordersubmit_cpy(payload,cur,con,userid,entityid,):
-################ COPY FROM mfordersubmit #########################    
+def mfordersubmit_cpy(payload_org):
+################ COPY FROM mfordersubmit #########################
+    
+    con,cur=db.mydbopncon()
+    
+    one_time_pay_details = payload_org['one_time_pay']
+    sip_pay_details = payload_org['sip_pay']  #Not required for one time
+    payload = payload_org['succrecs']
+    userid = payload_org['userid']
+    entityid = payload_org['entityid']
+
+
     ord_ids=[]
     for payld in payload:
         ord_ids.append(payld['mfor_uniquereferencenumber'])
 
     str=tuple(ord_ids)
     print(str)
-    #userid,entityid=jwtnoverify.validatetoken(request)
-    #con,cur=db.mydbopncon()
+
+    if userid is None or userid == '':
+        userid,entityid=jwtnoverify.validatetoken(request)
+    
+    if entityid is None or userid == '':
+        userid,entityid=jwtnoverify.validatetoken(request)
+
+    con,cur=db.mydbopncon()
 
     command = cur.mogrify("""
                 SELECT mfor_msgjson FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s and mfor_orderstatus = 'VAS';
@@ -152,15 +187,15 @@ def mfordersubmit_cpy(payload,cur,con,userid,entityid,):
 
     print(orders)
     order_records = json.dumps(orders)
-
+    
     ###  this should be a API call in lambda  #####
     orderresp = mforderapi.place_order_bse(order_records)
     ###  this should be a API call in lambda  #####
-    
+
     print(orderresp)
     #Add code to update the order id
 
-    #ot_orderids=[]
+    ot_orderids=[]
     sip_orderids=[]
 
     for orderres in orderresp:
@@ -168,10 +203,11 @@ def mfordersubmit_cpy(payload,cur,con,userid,entityid,):
         if orderres['success_flag'] == '0':
         
             if orderres['order_type'] == 'OneTime':
-
-                raise Exception(
-                    "Internal error 634: OneTime order should not be here")
-
+                ot_orderids.append(orderres['trans_no'])
+                command = cur.mogrify("""
+                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPY', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+            
             elif orderres['order_type'] == 'SIP':
                 sip_orderids.append(orderres['trans_no'])
                 command = cur.mogrify("""
@@ -180,8 +216,10 @@ def mfordersubmit_cpy(payload,cur,con,userid,entityid,):
         
         else:
             if orderres['order_type'] == 'OneTime':
-                raise Exception(
-                    "Internal error 634: OneTime order should not be here")
+                ot_orderids.append(orderres['trans_no'])
+                command = cur.mogrify("""
+                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
 
             elif orderres['order_type'] == 'SIP':
                 sip_orderids.append(orderres['trans_no'])
@@ -195,13 +233,35 @@ def mfordersubmit_cpy(payload,cur,con,userid,entityid,):
         con.commit()
 
     if orderres['order_type'] == 'OneTime':
-        raise Exception(
-            "Internal error 634: OneTime order should not be here")
+        str2 = tuple(ot_orderids)           
+        
+        frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
+        todt = datetime.now().strftime('%d-%b-%Y')
+
+        all_recs = mforder.fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid, frmdt, todt, 'BFP')
+        print('*******************ord_type')
+        print(orderres['order_type'])
+        print(str2)
+        print(all_recs)
+        print('*******************ord_type')
+
+        resp_recs = all_recs
+        '''
+        resp_recs={
+            'success_recs': all_records['suc_records,
+            'failure_recs': fai_records
+        }
+        '''
+        print(json.dumps(resp_recs))
+        
     elif orderres['order_type'] == 'SIP':
         resp_recs = {
             'status' : 'completed',
             'sip_orderids': sip_orderids
             }
-            
+    con.commit()
+    cur.close()
+    con.close()  
     return json.dumps(resp_recs)
+
 ################ COPY FROM mfordersubmit #########################

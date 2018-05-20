@@ -25,8 +25,11 @@ def pfdatafetch():
 
     elif request.method=='GET':
         print("inside PFDATAFETCH GET")
+
         print((request))        
         print(request.headers)
+        
+
         userid,entityid=jwtnoverify.validatetoken(request)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         print(userid,entityid)

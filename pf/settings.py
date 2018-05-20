@@ -25,7 +25,7 @@ PASSWORD = ['@654321', '@123456']
 ## but i have used a constant here to simplofy things
 PASSKEY = ['0123456789', '9958788281']
 
-LOGOUTURL = ['http://localhost:4200/securedpg/dashboard','']
+
 
 '''
 SOAP API endpoints for BSEStar

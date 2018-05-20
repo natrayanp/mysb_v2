@@ -123,11 +123,21 @@ def send_one_order(bse_order):
         ## placing a lumpsum order instead 
         #bse_order = prepare_xsip_order(transaction, pass_dict)
         ## post the transaction
+        mandate_type = bse_order['mfor_sipmandatetype']
         del bse_order['mfor_ordertype']
-        order_resp = soap_post_isip_order(client, bse_order)
-        print(order_resp)
+        del bse_order['mfor_sipmandatetype']
 
-
+        if mandate_type == 'I':
+            order_resp = soap_post_isip_order(client, bse_order)
+            print(order_resp)
+        elif mandate_type == 'X':
+            #order_resp = soap_post_isip_order(client, bse_order)
+            #print(order_resp)
+            pass
+        elif mandate_type == 'E':
+            #order_resp = soap_post_isip_order(client, bse_order)
+            #print(order_resp)
+            pass
     else:
         '''
         raise Exception(
@@ -245,7 +255,7 @@ def soap_post_onetime_order(client, bse_order):
     status = order_resp['success_flag']
     if (status == '0'):
         # order successful
-        print("order successful")
+        print("ontime order successful")
     else:
         print("order failure")
         
@@ -330,7 +340,8 @@ def get_payment_link_bse(payload):
     print('before passdict')
     pass_dict = soap_get_password_upload(client)
     print('after passdict')
-    payment_url = soap_create_payment(client, str(payload['client_code']), payload['transaction_ids'], payload['total_amt'], pass_dict)
+    payment_url = soap_create_payment(client, payload, pass_dict)
+    #str(payload['client_code']), payload['transaction_ids'], payload['total_amt']
     #soap_create_payment(client, client_code, transaction_id, pass_dict,total_amt):
     print('paym,ent url')
     print(payment_url)
@@ -410,7 +421,11 @@ def soap_get_password_upload(client):
 
 
 ## fire SOAP query to get the payment url 
-def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dict):
+def soap_create_payment(client, payload, pass_dict):
+
+    client_code = str(payload['client_code'])
+    transaction_id = payload['transaction_ids']
+    #total_amt = payload['total_amt']
 
     print(client_code)
     print(transaction_id)
@@ -427,17 +442,17 @@ def soap_create_payment(client, client_code, transaction_id, total_amt, pass_dic
     header_value = soap_set_wsa_headers(method_url, settings.SVC_PAYLNK_URL[settings.LIVE])
     #logout_url = 'http://localhost:8000/orpost'
     response = client.service.PaymentGatewayAPI({
-        'AccNo':'123456789123',
-        'BankID': 'ICI',
+        'AccNo': payload['acc_num'],
+        'BankID': payload['bank_id'],
         'ClientCode': client_code,
         'EncryptedPassword': pass_dict['password'],
-        'IFSC':'ICIC0000001',
-        'LogOutURL':settings.LOGOUTURL[settings.LIVE],
+        'IFSC':payload['ifsc'],
+        'LogOutURL':payload['logout_url'],
         'MemberCode':settings.MEMBERID[settings.LIVE],
-        'Mode':'DIRECT',
+        'Mode':payload['mode'],
         #'Orders':{"string": transaction_id},
         'Orders':options,
-        'TotalAmount':total_amt
+        'TotalAmount':payload['total_amt']
         },
         #settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
         _soapheaders=[header_value]
@@ -878,17 +893,18 @@ def get_payment_link_bse1(payload):
     '''
     print('inside payment')
     print(payload)
-    client_code = payload['client_code']
+    #client_code = payload['client_code']
     ## get the payment link and store it
     client = zeep.Client(wsdl=settings.WSDL_UPLOAD_URL[settings.LIVE])
     set_soap_logging()
     pass_dict = soap_get_password_upload1(client)
-    payment_url = soap_create_payment1(client, str(client_code), pass_dict)
+    payment_url = soap_create_payment1(client, payload, pass_dict)
 
     return payment_url
 
 
-def soap_create_payment1(client, client_code,  pass_dict):
+def soap_create_payment1(client, payload,  pass_dict):
+    client_code = payload['client_code']
     method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'MFAPI'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_UPLOAD_URL[settings.LIVE])
     #logout_url = 'http://localhost:8000/orpost'
@@ -896,7 +912,7 @@ def soap_create_payment1(client, client_code,  pass_dict):
         '03',
         settings.USERID[settings.LIVE],
         pass_dict['password'],
-        settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+settings.LOGOUTURL[settings.LIVE],
+        settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+payload['logout_url'],
         _soapheaders=[header_value]
     )
     print
