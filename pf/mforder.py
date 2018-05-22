@@ -185,7 +185,7 @@ def mfordersave():
                 #No New portfolio should come here
                 pass
             elif savetype == "Old" :
-                print('inside old')
+                print('inside old line188')
                 pfdata['pflmtime']= pfsavetimestamp
                 pfdata.get('pfuserid')            
 
@@ -196,14 +196,51 @@ def mfordersave():
                 ###PF stock details update END###
 
                 ###PF MF details update START###
-
+                print(pfmflsdata)
                 if pfmflsdata!=None:
-                    for d in pfmflsdata:  
+                    i = 0
+                    print("inside pfmflsdata !=None line201")
+                    print(pfmflsdata)
+                    print("inside pfmflsdata !=None line201")
+
+                    for d in pfmflsdata:
+                        print("inside for test loop ln 205")
+                        print(d)
+                        print(i)
+                        i = i+1
+
+                    for d in pfmflsdata: 
+                        print(d)
                         print("pfmflsdata inside for")
                         print(d)
                         d['ormfoctime']= pfsavetimestamp
                         d['ormflmtime']= pfsavetimestamp
+                        
+                        command = cur.mogrify("SELECT ormflistid FROM webapp.pfmflist WHERE ormffndcode = %s AND orpfuserid = %s AND orportfolioid = %s AND entityid =%s;",(d.get('ormffndcode'),userid,pfdata.get('pfportfolioid'),entityid,))
+                        print(command)
+                        cur, dbqerr = db.mydbfunc(con,cur,command)
+                                            
+                        if cur.closed == True:
+                            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                                dbqerr['statusdetails']="Fund MAX sequence failed"
+                            resp = make_response(jsonify(dbqerr), 400)
+                            return(resp)
 
+                        #Model to follow in all fetch
+                        if cur.rowcount == 1:
+                            for record in cur:  
+                                d['ormflistid'] = record[0]                                
+
+                        elif cur.rowcount == 0:
+                            print("Fund doesn't exist in this users portfolio")
+                            d['ormflistid'] = ""
+                        else:
+                            dbqerr = {'natstatus': 'error', 'statusdetails': 'Same fund exists multiple times in the portfolio'}
+                            return(make_response(jsonify(dbqerr), 400))
+                        
+                        print("is the fund already exists:")
+                        print(d['ormflistid'])
+                        
                         if(d['ormflistid']==""):
                             #New fund getting added to the PF
                             command = cur.mogrify("SELECT MAX(ormfseqnum) FROM webapp.pfmflist where orportfolioid = %s and entityid =%s;",(pfdata.get('pfportfolioid'),entityid,))
@@ -353,15 +390,21 @@ def mfordersave():
 
                             #pfmforlsseqnum=1
                             if pfmflsordata != None:
-                                for e in pfmflsordata: 
-                                    print("PRINTING e")
-                                    print(e)                                           
+                                for e in pfmflsordata:        
+                                                                   
                                     e['ormfoctime']= pfsavetimestamp
                                     e['ormflmtime']= pfsavetimestamp
-                                    #e['orormfpflistid']= "or"+d.get('ormflistid')+str(pfmforlsseqnum)
                                     e['orormffundname']=d.get('ormffundname')
                                     e['orormffndcode']=d.get('ormffndcode')
+                                    e['orormflistid'] = d.get('ormflistid')
                                     e['entityid']=entityid
+                                    e['ororportfolioid']=pfdata.get('pfportfolioid')
+                                    e['orpfportfolioname']=pfdata.get('pfportfolioname')
+                                    e['ororpfuserid']=d.get('orpfuserid')
+
+
+                                    print("PRINTING e")
+                                    print(e)  
 
                                     #For new SIP or onetime record for the fund
                                     if(e['orormfpflistid'] ==""):                                    
@@ -390,14 +433,11 @@ def mfordersave():
                                                 
                                             else:
                                                 pfmforlsseqnum=records[0]+1
+                                                
                                         print(pfmforlsseqnum)
-                                        print(type(pfmforlsseqnum))
                                         e['orormfpflistid']= "or"+d.get('ormflistid')+str(pfmforlsseqnum)
-                                        e['orormflistid']= d.get('ormflistid')
                                         e['orormfseqnum'] = str(pfmforlsseqnum)
-                                        e['ororportfolioid']=d.get('orportfolioid')
-                                        e['orpfportfolioname']=pfdata.get('pfportfolioname')
-                                        e['ororpfuserid']=d.get('orpfuserid')
+
                                         pfmforlsdatalist.append(e['orormfpflistid'])
                                         
                                         pfmforlsseqnum = pfmforlsseqnum+1
@@ -427,7 +467,7 @@ def mfordersave():
                                                         WHERE orormfpflistid = %s AND entityid = %s;
                                                     """,(str(pfmflsordatajsondict),e.get('orormfpflistid'),entityid,))
 
-
+                                            print(command)
                                             cur, dbqerr = db.mydbfunc(con,cur,command)
                                             if cur.closed == True:
                                                 if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
@@ -474,12 +514,63 @@ def mfordersave():
 
             #do the clean up of fund sip or oneitme records removed: END
         
+            #POST UPDATES COMMON:START 
+            # (source: mforder.py -> mfordersave; referredin: portfolio.py ->executepf,pfdatasave )
+            # Fund edit/delete allowed : START
+            #If atleast one of the order is not new, we should not allow the fund to be removed and edited
+            #in this case we mark ormffndnameedit as fixed    
+            
+            command = cur.mogrify("UPDATE webapp.pfmflist SET ormffndnameedit = 'fixed' WHERE ormflistid in (SELECT distinct orormflistid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) IN ('INCART') and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
+            print(command)
+
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+            #command = cur.mogrify("UPDATE webapp.pfmflist SET ormffndnameedit = 'noedit' WHERE ormflistid in (SELECT distinct orormflistid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) = 'NEW' and ororpfuserid = %s AND entityid = %s) AND 0 = (SELECT COUNT( distinct orormflistid) FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) != 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,userid,entityid,))
+            command = cur.mogrify("UPDATE webapp.pfmflist SET ormffndnameedit = 'noedit' WHERE ormflistid NOT IN (SELECT distinct orormflistid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) IN ('INCART') and ororpfuserid = %s AND entityid = %s);",(userid,entityid,))
+            print(command)
+
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            # Fund edit/delete allowed : END
+
+            #POST UPDATES COMMON:END
+
+
+
             #do the clean up of funds removed: START
+            pfid = pfdata.get('pfportfolioid')
             if pfmflsdatalist:                
-                command = cur.mogrify("DELETE FROM webapp.pfmflist where ormflistid NOT IN %s AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s AND ormffndnameedit in ('edit','noedit');",(str2,entityid,userid,pfdata.get('pfportfolioid'),))
+                #command = cur.mogrify("DELETE FROM webapp.pfmflist where ormflistid NOT IN %s AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s AND ormffndnameedit in ('edit','noedit');",(str2,entityid,userid,pfdata.get('pfportfolioid'),))
+                command = cur.mogrify("""
+                            DELETE FROM webapp.pfmflist where ormflistid NOT IN %s 
+                            AND ormflistid NOT IN (SELECT DISTINCT orormflistid FROM webapp.pfmforlist WHERE entityid =%s AND ororpfuserid= %s)
+                            AND entityid =%s AND orpfuserid=%s AND ormffndnameedit in ('edit','noedit');                           
+                            """
+                            ,(str2,entityid,userid,entityid,userid,))
+                            #AND ormffndnameedit in ('edit','noedit');
+
                 print(command)
             else:
-                command = cur.mogrify("DELETE FROM webapp.pfmflist where entityid =%s AND orpfuserid=%s AND orportfolioid= %s;",(entityid,userid,pfdata.get('pfportfolioid'),))
+                #command = cur.mogrify("DELETE FROM webapp.pfmflist where entityid =%s AND orpfuserid=%s AND orportfolioid= %s;",(entityid,userid,pfid,))
+                command = cur.mogrify("""
+                            DELETE FROM webapp.pfmflist 
+                            WHERE ormflistid NOT IN (SELECT DISTINCT orormflistid FROM webapp.pfmforlist WHERE entityid =%s AND ororpfuserid= %s)
+                            AND entityid =%s AND orpfuserid=%s AND ormffndnameedit in ('edit','noedit');
+                            """
+                            ,(entityid,userid,entityid,userid,))
+                            #
+
                 print(command)
 
             cur, dbqerr = db.mydbfunc(con,cur,command)
@@ -492,7 +583,12 @@ def mfordersave():
             
             #remove the fund where we don't have the any entry for order :START
             if pfmflsdatalist:
-                command = cur.mogrify("DELETE FROM webapp.pfmflist where ormflistid IN (SELECT A.ormflistid FROM webapp.pfmflist A LEFT JOIN webapp.pfmforlist B ON A.ormflistid = B.orormflistid WHERE B.orormflistid IS NULL AND A.ormflistid IN %s AND A.entityid = %s) AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s;",(str2,entityid,entityid,userid,pfdata.get('pfportfolioid'),))
+                command = cur.mogrify("""
+                        DELETE FROM webapp.pfmflist where ormflistid IN 
+                        (SELECT A.ormflistid FROM webapp.pfmflist A LEFT JOIN webapp.pfmforlist B ON A.ormflistid = B.orormflistid 
+                            WHERE B.orormflistid IS NULL AND A.ormflistid IN %s AND A.entityid = %s) AND entityid =%s AND orpfuserid=%s AND orportfolioid= %s;
+                        """,(str2,entityid,entityid,userid,pfid,))
+
                 cur, dbqerr = db.mydbfunc(con,cur,command)
 
                 if cur.closed == True:
@@ -517,24 +613,7 @@ def mfordersave():
         # POST UPDATES FOR ORDER SCREEN : END
 
 
-        #POST UPDATES COMMON:START
-        # Fund edit/delete allowed : START
-        #If atleast one of the order is not new, we should not allow the fund to be removed and edited
-        #in this case we mark ormffndnameedit as fixed    
         
-        command = cur.mogrify("UPDATE webapp.pfmflist SET ormffndnameedit = 'fixed' WHERE ormflistid in (SELECT distinct orormflistid FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) != 'NEW' and ororpfuserid = %s AND entityid = %s) AND 0 < (SELECT COUNT( distinct orormflistid) FROM webapp.pfmforlist WHERE UPPER(ormffndstatus) != 'NEW' and ororpfuserid = %s AND entityid = %s);",(userid,entityid,userid,entityid,))
-        print(command)
-
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                            
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Fund MAX sequence failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        # Fund edit/delete allowed : END
-
-        #POST UPDATES COMMON:END
 
     con.commit()
     print('order details save successful')
@@ -583,7 +662,7 @@ def mfordervalidate():
             return(resp)
 
         #select One Time records and enter in order processing table
-
+        
         command = cur.mogrify("""
             INSERT INTO webapp.mforderdetails (mfor_prodcuttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,
             mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,mfor_amount,mfor_foliono,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,
