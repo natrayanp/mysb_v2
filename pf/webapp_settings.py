@@ -15,4 +15,5 @@ AUTH values for BSEStar
 for all following- the 1st element is value for testing environment, the 2nd for live
 '''
 
-LOGOUTURL = ['http://localhost:4200/securedpg/dashboard','']
+LOGOUTURL_BANKLNK = ['http://127.0.0.1:8000/orpost','']
+LOGOUTURL_BSELNK = ['http://localhost:4200/paycomp','']

@@ -15,9 +15,11 @@ from pf import jwtdecodenoverify as jwtnoverify
 
 @app.after_request
 def after_request(response):
+    userid,entityid=' '*2
     # get the request object somehow
     if request.method!='OPTIONS':
-        userid,entityid=jwtnoverify.validatetoken(request)
+        if jwtnoverify.validatetoken(request):
+            userid,entityid=jwtnoverify.validatetoken(request)
         print("inside after requetst end ----------------------------------------------------------------------------------")
         print(request.content_length)
         print(userid)

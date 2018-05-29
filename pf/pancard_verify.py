@@ -5,18 +5,25 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.select import Select
 
+
+# for datetime processing
+from pytz import timezone
+from datetime import datetime, timedelta, date
+from time import strptime, sleep
+from dateutil.relativedelta import relativedelta
 from dateutil import tz
-from datetime import datetime
-from datetime import date
+
 
 options = Options()
 #options.add_argument("--headless")
 #chrome_options.add_argument("--window-size=1920x1080")
 
 
-driver = webdriver.Firefox(firefox_options=options)
-#driver = webdriver.Chrome(chrome_options=options)
+#driver = webdriver.Firefox(firefox_options=options)
+driver = webdriver.Chrome(chrome_options=options)
 
 '''
 driver.get("https://camskra.com/")
@@ -79,13 +86,13 @@ driver.close()
 
 
 # instantiate a chrome options object so you can set the size and headless preference
-options = Options()
+#options = Options()
 #options.add_argument("--headless")
 #chrome_options.add_argument("--window-size=1920x1080")
 
 
 #driver = webdriver.Firefox(firefox_options=options)
-driver = webdriver.Chrome(chrome_options=options)
+#driver = webdriver.Chrome(chrome_options=options)
 driver.get("https://bsestarmfdemo.bseindia.com")
 assert "Mutual Fund System - Bombay Stock Exchange Limited" in driver.title
 name = driver.find_element_by_name("txtUserId")
@@ -118,8 +125,93 @@ assert "WELCOME : NATRAYAN" not in driver.page_source
 member = driver.find_element_by_xpath('//*[@id="ddtopmenubar"]/ul/li[6]/a')
 member.click()
 
+line = 'https://bsestarmfdemo.bseindia.com/RptOrderStatusReportNew.aspx'
+driver.get(line)
+print (driver.title)
+driver.get(line)
+print (driver.title)
+datee = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'txtToDate')))
+datee.clear()
+
+date_dict={}
+today = date.today()
+date_dict['date'] = today
+datee.send_keys(date_dict['date'].strftime("%d-%b-%Y"))
+sleep(2)    # needed as page refreshes after setting date
+# make_ready(driver)    
+
+
+#transtype =  WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID,"ddlBuySell")))
+#transtype = driver.find_element_by_xpath('/html/body/form/div[4]/table/tbody/tr[3]/td[2]/select/option[2]')
+#transtype = Select(driver.find_element_by_xpath('//*[@id="ddlBuySell"]'))
+
+#transtype =  WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID,"ddlBuySell")))
+
+element = driver.find_element_by_xpath('//*[@id="ddlBuySell"]')
+all_options = element.find_elements_by_tag_name("option")
+for option in all_options:
+    print("Value is: %s" % option.get_attribute("value"))
+    if option.get_attribute("value") == 'P':
+        option.click()
+
+
+#select_fr = ui.Select(driver.find_element_by_xpath("""/html/body/form/div[4]/table/tbody/tr[3]/td[2]/select/option[2]"""))
+# select_fr = Select(driver.find_element_by_id("ddlBuySell"))
+'''
+element = driver.find_element_by_xpath('//*[@id="ddlBuySell"]')
+all_options = element.find_elements_by_tag_name("option")
+for option in all_options:
+    print("Value is: %s" % option.get_attribute("value"))
+    if option.get_attribute("value") == 'V':
+        option.click()
+'''
+
+#transtype.select_by_index(0)
+#transtype.click()
+# select by visible text
+#transtype.select_by_visible_text('PURCHASE')
+
+# select by value 
+#transtype.select_by_value('2')
+
+#transtype.click()
+sleep(2)
+
+transtype = Select(driver.find_element_by_xpath('//*[@id="ddlOStatus"]'))
+transtype.select_by_visible_text('VALID')
+
+
+
+
+
+submit = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "btnSubmit")))
+submit.click()
+sleep(2)
+# make_ready(driver)
+
+table = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//table[@class='glbTableD']/tbody")))
+print ('html loading done')
+rows = table.find_elements(By.XPATH, "tr[@class='tblERow'] | tr[@class='tblORow']")
+
+for row in rows:
+    fields = row.find_elements(By.XPATH, "td")
+
+    order_id = fields[3].text
+    status = fields[18].text
+    print("order_id :", order_id, "- Status : ",status)
+    if status == "ALLOTMENT DONE":
+        status = '6'
+    elif status == "SENT TO RTA FOR VALIDATION":
+        status = '5'
+    elif status == "ORDER CANCELLED BY USER":
+        status = '1'
+    elif status == "PAYMENT NOT RECEIVED TILL DATE":
+        status = '-1'
+
+print(status)
+
 print("completed")
-driver.close()
+#driver.close()
 
 
 '''

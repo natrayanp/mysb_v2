@@ -664,7 +664,7 @@ def mfordervalidate():
         #select One Time records and enter in order processing table
         
         command = cur.mogrify("""
-            INSERT INTO webapp.mforderdetails (mfor_prodcuttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,
+            INSERT INTO webapp.mforderdetails (mfor_producttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,
             mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,mfor_amount,mfor_foliono,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,
             mfor_orderoctime,mfor_orderlmtime,mfor_entityid) 
             SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS',
@@ -770,7 +770,7 @@ def mfordervalidate():
             return(resp)
 
         command = cur.mogrify("""
-            INSERT INTO webapp.mforderdetails(mfor_prodcuttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,
+            INSERT INTO webapp.mforderdetails(mfor_producttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,
             mfor_amount,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,mfor_sipstartdate,mfor_freqencytype,mfor_numofinstallment,mfor_foliono,
             mfor_orderoctime,mfor_orderlmtime,mfor_entityid,mfor_sipmandateid,mfor_sipmandatetype) 
             SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS','P','P',ororpfuserid,B.clientcode,orormffndcode,
@@ -1022,9 +1022,8 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
     return resp_recs
 
 
+
 def one_fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt, todt, rectype):
-
-
 # Don't call this directly, call this function via fetchsucfai_recs
     qry = "SELECT json_agg(b) FROM ("
     qry = qry + " SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode,X.mfor_orderid FROM webapp.mforderdetails X"
@@ -1237,7 +1236,7 @@ def mforderpayment():
             'acc_num': one_time_pay_details['acnum'],
             'bank_id': one_time_pay_details['bank_id'],
             'ifsc': one_time_pay_details['ifsc'],
-            'logout_url': webapp_settings.LOGOUTURL[webapp_settings.LIVE],
+            'logout_url': webapp_settings.LOGOUTURL_BANKLNK[webapp_settings.LIVE],
             'mode': one_time_pay_details['mode'],
             'mandate_id':''
         }
@@ -1245,13 +1244,14 @@ def mforderpayment():
         # FOR BSE PAYMENT LINK : START
         print('record_to_submit')
         print(record_to_submit)
-        url_pay=mforderapi.get_payment_link_bse(record_to_submit)
+        url_pay=mforderapi.get_payment_link_direct(record_to_submit)
         print('url_pay')
         print(url_pay)
 
         if (url_pay['status']=='failed'):
+            record_to_submit['logout_url']= webapp_settings.LOGOUTURL_BSELNK[webapp_settings.LIVE]
             url_pay = None
-            url_pay = mforderapi.get_payment_link_bse1(record_to_submit)
+            url_pay = mforderapi.get_payment_link_bse(record_to_submit)
         #Code to be re-written to include http call
         # FOR BSE PAYMENT LINK : END
         
@@ -1654,26 +1654,6 @@ def prepare_isip_ord(ord):
     else:
         return( False, json.dumps(data_dict))
 
-'''
-def get_payment_status_bse(client_code, transaction_id):
-'''
-#Gets whether user has paid for a transaction created on BSEStar
-'''
-
-## initialise the zeep client for wsdl
-client = zeep.Client(wsdl=WSDL_UPLOAD_URL[settings.LIVE])
-set_soap_logging()
-
-## get the password
-pass_dict = soap_get_password_upload(client)
-
-## get payment status
-payment_status = soap_get_payment_status(client, client_code, transaction_id, pass_dict)
-return payment_status
-'''
-
-
-
 @app.route('/orpost',methods=['GET','POST','OPTIONS'])
 def orpost():
     if request.method=='OPTIONS':
@@ -1689,7 +1669,154 @@ def orpost():
         payload= request.values
         #payload=json.loads(payload)
         print(payload)
+        print('11111111111111111111111111111111')
         bse_order = 'nat'
+        print('11111111111111111111111111111111')
         #bse_order = json.loads(payload)
         print(bse_order)
-        return bse_order
+        #return bse_order
+        return redirect("http://localhost:4200/paycomp/no", code=302)  
+
+
+@app.route('/mfordpaystatus',methods=['GET','POST','OPTIONS'])
+def mfordpaystatus():
+    if request.method=='OPTIONS':
+        print ("inside mfordpaystatus options")
+        return 'inside mfordpaystatus options'
+
+    elif request.method=='POST' :
+        print("inside mfordpaystatus POST")
+        print((request))        
+        userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+        con,cur=db.mydbopncon()
+        
+        print(con)
+        print(cur)
+        
+        command = cur.mogrify(
+            """
+            SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPY','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
+            """,(userid,entityid,))
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="pf Fetch failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+        #Model to follow in all fetch
+        records=[]
+        for record in cur:  
+            records.append(record[0])           
+        print(records)
+
+        order_recs = []
+        for record in records:
+            order_rec = {
+                'client_code':record['mfor_clientcode'],
+                'order_id': record['mfor_orderid'],
+                'segment' : record['mfor_producttype']
+            }
+            order_recs.append(order_rec)
+        
+        print(order_recs)
+        #shuld be call api and return response.  Processing done in background
+        submit_recs_status = paystatus_from_bse(order_recs,userid,entityid)
+        print(submit_recs_status)
+        #shuld be call api and return response.  Processing done in background
+                               
+        cur.close()
+        con.close()    
+        print("payment status done")
+        return jsonify({'body':'payment status done'})
+        #return redirect("http://localhost:4200/securedpg/dashboard", code=301)  
+
+def paystatus_from_bse(submit_recs_json,userid,entityid):
+    con,cur=db.mydbopncon()
+    order_results = mforderapi.paystatusapi(submit_recs_json)
+
+    for order_res in order_results:    
+        command = cur.mogrify("BEGIN;")
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="DB query failed, BEGIN failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+        savetimestamp = datetime.now()
+        pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
+        
+        orderstatus = 'PPY'
+        fndstatus= 'SUBM'
+        bse_status_code = order_res.get('bse_status_code')
+        bse_status_msg = order_res.get('bse_status_msg')
+        segment = order_res.get('segment')
+        order_id = order_res.get('order_id')
+        print(bse_status_code)
+        print(type(bse_status_code))
+
+        if bse_status_code == '101':
+            orderstatus = 'PER'
+            fndstatus= 'COMPF'
+
+        elif bse_status_code == '100':
+            if bse_status_msg == 'PAYMENT NOT INITIATED FOR GIVEN ORDER' in bse_status_msg:
+                #Payment not initiated so leave this in PPY status
+                pass
+            elif bse_status_msg == 'REJECTED' in bse_status_msg:
+                orderstatus = 'PRJ'
+                fndstatus= 'COMPF'
+
+            elif bse_status_msg == 'AWAITING FOR FUNDS CONFIRMATION' in bse_status_msg:
+                orderstatus = 'PAW'               
+
+            elif bse_status_msg ==  'APPROVED' in bse_status_msg:
+                orderstatus = 'PAP'
+                fndstatus= 'COMPS'
+
+            else:
+                pass
+        else:
+            pass
+
+
+        if orderstatus != 'PPY':
+            command = cur.mogrify(
+                """
+                UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderlmtime = %s WHERE mfor_orderstatus in ('PPY','PPI') AND mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                """,(orderstatus,pfsavetimestamp,order_id,segment,userid,entityid,))
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="mflist insert Failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            
+            if orderstatus != 'SUBM':
+                command = cur.mogrify(
+                    """
+                    UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+                    WHERE ormffndstatus in ('SUBM') 
+                    AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+                    AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+                    """,(fndstatus,pfsavetimestamp,order_id,segment,userid,entityid,segment,userid,entityid,))
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="mflist insert Failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+
+            con.commit()
+
+    cur.close()
+    con.close()
+
+    return True
