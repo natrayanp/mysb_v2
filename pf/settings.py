@@ -84,3 +84,8 @@ METHOD_PAYLNK_URL = [
     'http://tempuri.org/IStarMFPaymentGatewayService/'
     #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
 ]
+
+
+BSESTAR_LOGIN_PG = ["https://bsestarmfdemo.bseindia.com",""]
+
+BSESTAR_ORDER_STATUS_PG = ["https://bsestarmfdemo.bseindia.com/RptOrderStatusReportNew.aspx",""]

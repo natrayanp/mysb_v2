@@ -943,38 +943,45 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
             fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
             bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
             pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+            pay_init_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPP')
         elif (rectype =='VAS'):
             suc_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAS')
             fai_records = ''
             bse_fai_records = ''
             pen_pay_records = ''
+            pay_init_records = ''
         elif (rectype =='VAF'):
             suc_records = ''
             fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
             bse_fai_records = ''
             pen_pay_records = ''
+            pay_init_records = ''
         elif (rectype =='VSF'):
             print("inside VSF")
             suc_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAS')
             fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
             bse_fai_records = ''
             pen_pay_records = ''
+            pay_init_records = ''
         elif (rectype == 'BFP'):
             print("inside BFP")
             suc_records = ''
             fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'VAF')
             bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
             pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+            pay_init_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPP')
         elif(rectype =='FAI'):
             suc_records = ''
             fai_records = ''
             bse_fai_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'FAI')
             pen_pay_records = ''
+            pay_init_records = ''
         elif(rectype =='PPY'):
             suc_records = ''
             fai_records = ''
             bse_fai_records = ''
             pen_pay_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPY')
+            pay_init_records = one_fetchsucfai_recs(con, cur, orid_tuple, ordtyp, userid, entityid, fromdt, todt, rectype = 'PPP')
 
 
         if suc_records == None or suc_records == '':
@@ -989,6 +996,9 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
         if pen_pay_records == None or pen_pay_records == '':
            pen_pay_records = []
 
+        if pay_init_records == None or pay_init_records == '':
+           pay_init_records = []
+
 
         if ordtyp == 'One Time':
             print("inside one time")
@@ -1001,7 +1011,8 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
                 'val_success_recs': suc_records,
                 'failure_recs': fai_records,
                 'bse_failure_recs': bse_fai_records,
-                'paypending_recs': pen_pay_records
+                'paypending_recs': pen_pay_records,
+                'pay_initiated_recs': pay_init_records
             }
             sip_recs =''
         elif ordtyp == 'SIP':
@@ -1055,8 +1066,7 @@ def one_fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromd
             dbqerr['statusdetails']="Validation records fetch failed"
         resp = make_response(jsonify(dbqerr), 400)
         return(resp)
-    print("cur") 
-    print(cur)
+    print("Line 1070: total records",cur.rowcount)
     
     #Model to follow in all fetch
     records=[]
@@ -1167,6 +1177,15 @@ def mfordersubmit():
             print(command)
 
             cur, dbqerr = db.mydbfunc(con,cur,command)
+
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+
+            
             con.commit()
 
         if orderres['order_type'] == 'OneTime':
@@ -1215,6 +1234,12 @@ def mforderpayment():
         payload_org= request.get_json()
         #payload = request.stream.read().decode('utf8')    
         print(payload_org)
+        
+        userid,entityid=jwtnoverify.validatetoken(request)
+        savetimestamp = datetime.now()
+        #pfsavedate=savetimestamp.strftime('%Y%m%d') 
+        pfsavetimestamp=savetimestamp.strftime('%Y/%m/%d %H:%M:%S')
+        print(pfsavetimestamp)
 
         one_time_pay_details = payload_org['one_time_pay']
         #sip_pay_details = payload_org['sip_pay']  #Not required for one time
@@ -1244,6 +1269,26 @@ def mforderpayment():
         # FOR BSE PAYMENT LINK : START
         print('record_to_submit')
         print(record_to_submit)
+
+        str2=tuple(ord_ids)
+        print(ord_ids)
+        print("line:1276",str2)   
+
+        con,cur=db.mydbopncon()
+
+        command = cur.mogrify("""
+                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPP', mfor_orderlmtime  = %s WHERE mfor_orderid = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(pfsavetimestamp,str2,userid,entityid,))
+        print("line:1282",command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="selecting order to submit to BSE failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+        con.commit()                                
+
         url_pay=mforderapi.get_payment_link_direct(record_to_submit)
         print('url_pay')
         print(url_pay)
@@ -1697,7 +1742,7 @@ def mfordpaystatus():
         
         command = cur.mogrify(
             """
-            SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPY','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
+            SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPP','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
             """,(userid,entityid,))
         print(command)
         cur, dbqerr = db.mydbfunc(con,cur,command)
@@ -1751,7 +1796,7 @@ def paystatus_from_bse(submit_recs_json,userid,entityid):
         savetimestamp = datetime.now()
         pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
         
-        orderstatus = 'PPY'
+        orderstatus = 'PPP'
         fndstatus= 'SUBM'
         bse_status_code = order_res.get('bse_status_code')
         bse_status_msg = order_res.get('bse_status_msg')
@@ -1767,6 +1812,7 @@ def paystatus_from_bse(submit_recs_json,userid,entityid):
         elif bse_status_code == '100':
             if bse_status_msg == 'PAYMENT NOT INITIATED FOR GIVEN ORDER' in bse_status_msg:
                 #Payment not initiated so leave this in PPY status
+                orderstatus = 'PPY'
                 pass
             elif bse_status_msg == 'REJECTED' in bse_status_msg:
                 orderstatus = 'PRJ'
@@ -1785,10 +1831,10 @@ def paystatus_from_bse(submit_recs_json,userid,entityid):
             pass
 
 
-        if orderstatus != 'PPY':
+        if orderstatus != 'PPP':
             command = cur.mogrify(
                 """
-                UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderlmtime = %s WHERE mfor_orderstatus in ('PPY','PPI') AND mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderlmtime = %s WHERE mfor_orderstatus in ('PPP','PAW') AND mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                 """,(orderstatus,pfsavetimestamp,order_id,segment,userid,entityid,))
             print(command)
             cur, dbqerr = db.mydbfunc(con,cur,command)
