@@ -1,29 +1,22 @@
 from pf import app
 from pf import dbfunc as db
 from pf import jwtdecodenoverify as jwtnoverify
-#from order import dbfunc as db
-#from order import jwtdecodenoverify as jwtnoverify
-
-
-#from order import app
-from flask import request, make_response, jsonify, Response, redirect
-from datetime import datetime
-from order import dbfunc as db
-from order import jwtdecodenoverify as jwtnoverify
-from dateutil import tz
-from datetime import datetime, timedelta
-from datetime import date
-from multiprocessing import Process
-from multiprocessing import Pool
+from pf import background as bg
+from pf import webapp_settings
 from pf import mforderapi
 from pf import mfsiporder
-import requests
-from pf import webapp_settings
 
-import psycopg2
+from datetime import datetime, date, timedelta
+from multiprocessing import Process
+from multiprocessing import Pool
 import json
-import jwt
 import time
+
+from flask import request, make_response, jsonify, Response, redirect
+import psycopg2
+import requests
+import jwt
+from dateutil import tz
 
 @app.route('/mforderdatafetch',methods=['GET','OPTIONS'])
 def mforderdatafetch():
@@ -1770,7 +1763,7 @@ def mfordpaystatus():
         
         print(order_recs)
         #shuld be call api and return response.  Processing done in background
-        submit_recs_status = paystatus_from_bse(order_recs,userid,entityid)
+        submit_recs_status = bg.mfordpaystatusbg(order_recs,userid,entityid)
         print(submit_recs_status)
         #shuld be call api and return response.  Processing done in background
                                
@@ -1779,90 +1772,3 @@ def mfordpaystatus():
         print("payment status done")
         return jsonify({'body':'payment status done'})
         #return redirect("http://localhost:4200/securedpg/dashboard", code=301)  
-
-def paystatus_from_bse(submit_recs_json,userid,entityid):
-    con,cur=db.mydbopncon()
-    order_results = mforderapi.paystatusapi(submit_recs_json)
-
-    for order_res in order_results:    
-        command = cur.mogrify("BEGIN;")
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="DB query failed, BEGIN failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-
-        savetimestamp = datetime.now()
-        pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
-        
-        orderstatus = 'PPP'
-        fndstatus= 'SUBM'
-        bse_status_code = order_res.get('bse_status_code')
-        bse_status_msg = order_res.get('bse_status_msg')
-        segment = order_res.get('segment')
-        order_id = order_res.get('order_id')
-        print(bse_status_code)
-        print(type(bse_status_code))
-
-        if bse_status_code == '101':
-            orderstatus = 'PER'
-            fndstatus= 'COMPF'
-
-        elif bse_status_code == '100':
-            if bse_status_msg == 'PAYMENT NOT INITIATED FOR GIVEN ORDER' in bse_status_msg:
-                #Payment not initiated so leave this in PPY status
-                orderstatus = 'PPY'
-                pass
-            elif bse_status_msg == 'REJECTED' in bse_status_msg:
-                orderstatus = 'PRJ'
-                fndstatus= 'COMPF'
-
-            elif bse_status_msg == 'AWAITING FOR FUNDS CONFIRMATION' in bse_status_msg:
-                orderstatus = 'PAW'               
-
-            elif bse_status_msg ==  'APPROVED' in bse_status_msg:
-                orderstatus = 'PAP'
-                fndstatus= 'COMPS'
-
-            else:
-                pass
-        else:
-            pass
-
-
-        if orderstatus != 'PPP':
-            command = cur.mogrify(
-                """
-                UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderlmtime = %s WHERE mfor_orderstatus in ('PPP','PAW') AND mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
-                """,(orderstatus,pfsavetimestamp,order_id,segment,userid,entityid,))
-            print(command)
-            cur, dbqerr = db.mydbfunc(con,cur,command)
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="mflist insert Failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            
-            if orderstatus != 'SUBM':
-                command = cur.mogrify(
-                    """
-                    UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
-                    WHERE ormffndstatus in ('SUBM') 
-                    AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
-                    AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
-                    """,(fndstatus,pfsavetimestamp,order_id,segment,userid,entityid,segment,userid,entityid,))
-                print(command)
-                cur, dbqerr = db.mydbfunc(con,cur,command)
-                if cur.closed == True:
-                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                        dbqerr['statusdetails']="mflist insert Failed"
-                    resp = make_response(jsonify(dbqerr), 400)
-                    return(resp)
-
-            con.commit()
-
-    cur.close()
-    con.close()
-
-    return True

@@ -2,13 +2,10 @@ from pf import app
 from pf import dbfunc as db
 from pf import jwtdecodenoverify as jwtnoverify
 
+
 from flask import request, make_response, jsonify, Response, redirect
-from datetime import datetime
-from order import dbfunc as db
-from order import jwtdecodenoverify as jwtnoverify
 from dateutil import tz
-from datetime import datetime
-from datetime import date
+from datetime import datetime, date
 from pf import settings
 from multiprocessing import Process
 from multiprocessing import Pool
@@ -1046,3 +1043,35 @@ def soap_get_payment_status(order_recs):
     }
 
     return pay_status
+
+
+
+
+#@app.route('/allotconfcallbackreg',methods=['GET','POST','OPTIONS'])
+#def allotconfcallbackreg():
+def allotconfcallbackreg(jsondata):
+    '''
+    if request.method=='OPTIONS':
+        print ("inside orderapi options")
+        return 'inside orderapi options'
+
+    elif request.method=='POST':
+        print("inside orderapi POST")
+
+        print((request))        
+        #userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        payload= request.get_json()
+        #payload=json.loads(payload)
+        print(payload)
+        order_recs = json.loads(payload)
+
+        #Gets whether user has paid for a transaction created on BSEStar
+        '''
+    order_recs = jsondata
+    #save this in database and return
+    print(order_recs)
+    #save this in database and return
+
+    return jsonify({'body':'allotment callback registration successful'})
+    

@@ -64,6 +64,42 @@ def mforderstatuspg_web():
 
         return order_status_recs
 
+
+@app.route('/mforderallotpg_web',methods=['GET','POST','OPTIONS'])
+#example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
+#should be called from mforderapi.
+def mforderallotpg_web():
+    
+    if request.method=='OPTIONS':
+        print ("inside mforderallotpg_web options")
+        return jsonify({'body':'success'})
+
+    elif request.method=='POST':   
+        print ("inside mforderallotpg_web post")
+        print(request.headers)
+        payload= request.get_json()
+        #payload = request.stream.read().decode('utf8')    
+        
+        print("line 83:",payload)
+
+        #check if client code is available in payload
+        memcd = payload.get("member_code")
+        
+        if memcd == None or memcd == '':
+            resp = make_response({'natstatus': 'error', 'statusdetails': 'No Member code provided in request'}, 400)
+            return resp
+
+        driver = init_driver("chrome",False)
+        #driver = init_driver("firfox",False)
+
+        try:
+            driver = login(driver)
+            allotment_recs, driver = get_allotments(driver,payload)
+        finally:
+            quit_driver(driver)
+
+        return allotment_recs
+
 def login(driver):
     '''
     Logs into the BSEStar web portal using login credentials defined in settings
@@ -112,6 +148,84 @@ def login(driver):
         driver = init_driver()
         return login(driver)
 
+def get_allotments(driver,payload):
+    '''
+    get status of transactions
+    '''
+    try:
+        allotment_recs, driver = find_allotment(driver, payload.get("dt"), payload.get("member_code"))
+        
+        # update status of all orders incl sip instalment orders
+        #update_order_status(driver)
+        return allotment_recs, driver
+
+    except (TimeoutException, StaleElementReferenceException, ErrorInResponseException, ElementNotVisibleException):
+        print("Retrying")
+        return get_allotments(driver,payload)
+
+    except (BadStatusLine):
+        print("Retrying for BadStatusLine in login")
+        driver = init_driver()     
+        driver = login(driver)
+        return get_allotments(driver,payload)
+
+    
+
+def find_allotment(driver, dt=None):
+#P - PURHCASE, R - REDEMPTION
+    if dt:
+        dt = dt
+    else:
+        dt = datetime.now().strftime('%d-%m-%Y'))
+
+
+    url = settings.BSESTAR_ALLOTMENT_PG[settings.LIVE]
+    driver.get(url)
+    print("Navigated to order status page")
+
+    date = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'txtToDate')))
+    date.clear()
+    date.send_keys(dt)
+    sleep(2)    # needed as page refreshes after setting date
+
+
+    submit = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "btnSubmit")))
+    submit.click()
+    sleep(2)
+
+        ## parse the table- find orders for this date
+    table = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//table[@class='glbTableD']/tbody")))
+    print ('html loading done')
+    rows = table.find_elements(By.XPATH, "tr[@class='tblERow'] | tr[@class='tblORow']")
+
+    allotment_recs = []
+    for row in rows:
+        fields = row.find_elements(By.XPATH, "td")
+        recs = {
+            'order_id' : fields[1].text,
+            'order_dt' : fields[4].text,
+            'scheme_code' : fields[5].text,
+            'member_id' ; fields[10].text,
+            'folio_num' : fields[12].text,
+            'client_code' : fields[15].text,
+            'client_name' : fields[16].text,
+            'alloted_nav' : fields[18].text,
+            'alloted_unt' : fields[19].text,
+            'alloted_amt' : fields[20].text,
+            'remarks' : field[22].text,
+            'order_type' : field[25].text,
+            'order_subtype' : field[33].text,
+            'sipreg_num' : field[26].text,
+            'sipreg_dt' : field[27].text,
+            'dp_typ' : fields[32].text,
+        }
+        allotment_recs.append(recs)
+    
+    print("line 224:", allotment_recs)
+
+    return allotment_recs, driver
+
+
 
 def get_transaction_status(driver, payload):
     '''
@@ -149,7 +263,8 @@ def find_order_status(driver, dt=None, tran_type='P',frmclntcd = None,toclntcd =
 
     date = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'txtToDate')))
     date.clear()
-    date.send_keys(date_dict['date'].strftime("%d-%b-%Y"))
+    date.send_keys(dt)
+    #date.send_keys(date_dict['date'].strftime("%d-%b-%Y"))
     sleep(2)    # needed as page refreshes after setting date
     # make_ready(driver)
 
