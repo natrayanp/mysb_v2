@@ -40,3 +40,9 @@ def mydbopncon():
             cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
     
     return con,cur
+
+def mydbcloseall(con,cur):
+#close cursor and connection before exit
+    con.commit()
+    cur.close()
+    con.close()

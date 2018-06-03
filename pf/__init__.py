@@ -9,17 +9,18 @@ from pf import portfolio
 from pf import mforder
 from pf import mfsiporder
 from pf import fund
+from pf import mforderapi_crawl
 from pf import jwtdecodenoverify as jwtnoverify
+from pf import loginsignup
 
-
-
+'''
 @app.after_request
 def after_request(response):
     userid,entityid=' '*2
     # get the request object somehow
     if request.method!='OPTIONS':
-        if jwtnoverify.validatetoken(request):
-            userid,entityid=jwtnoverify.validatetoken(request)
+        userid,entityid = jwtnoverify.validatetoken(request)
+
         print("inside after requetst end ----------------------------------------------------------------------------------")
         print(request.content_length)
         print(userid)
@@ -30,3 +31,4 @@ def after_request(response):
         print("inside after requetst end ----------------------------------------------------------------------------------")
     
     return response
+'''

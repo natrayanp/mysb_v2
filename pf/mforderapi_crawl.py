@@ -16,7 +16,7 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.select import Select
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException, ErrorInResponseException, ElementNotVisibleException, UnexpectedAlertPresentException, NoAlertPresentException
-from httplib import BadStatusLine
+from http.client import BadStatusLine
 
 # for datetime processing
 from pytz import timezone
@@ -54,16 +54,54 @@ def mforderstatuspg_web():
 
 
         driver = init_driver("chrome",False)
-        #driver = init_driver("firfox",False)
+        #driver = init_driver("firefox",False)
 
         try:
             driver = login(driver)
+            print("login done")
             order_status_recs, driver = get_transaction_status(driver,payload)
+            print("get tran done")
         finally:
             quit_driver(driver)
+            print("quit done")
 
-        return order_status_recs
+        return jsonify(order_status_recs)
 
+    elif request.method=='GET':   
+        print ("inside mforderstatus_web post")
+        print(request.headers)
+        '''
+        payload= request.get_json()
+        #payload = request.stream.read().decode('utf8')    
+        
+        print("line 42:",payload)
+
+        #check if client code is available in payload
+        frmc = payload.get("from_client_code")
+        toc = payload.get("to_client_code")
+        
+        if frmc == None or frmc == '':
+            resp = make_response({'natstatus': 'error', 'statusdetails': 'No client code provided in request'}, 400)
+            return resp
+        elif toc == None or toc == '':
+            payload["to_client_code"] = frmc
+        '''
+
+        driver = init_driver("chrome",False)
+        #driver = init_driver("firefox",False)
+        payload = ''
+        order_status_recs = {}
+        try:
+            driver = login(driver)
+            print("login done")
+            order_status_recs, driver = get_transaction_status(driver,payload)
+            print("get tran done")
+        finally:
+            #quit_driver(driver)
+            print("finally done")
+            return jsonify(order_status_recs)
+
+        return jsonify(order_status_recs)
 
 @app.route('/mforderallotpg_web',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
@@ -133,7 +171,7 @@ def login(driver):
         submit = driver.find_element_by_id("btnLogin")
         submit.click()
 
-        assert "WELCOME : NATRAYAN" in driver.page_source
+        assert "WELCOME : NATRAYAN" not in driver.page_source
 
         print("Logged in")
         return driver
@@ -153,8 +191,8 @@ def get_allotments(driver,payload):
     get status of transactions
     '''
     try:
-        allotment_recs, driver = find_allotment(driver, payload.get("dt"), payload.get("member_code"))
-        
+        #allotment_recs, driver = find_allotment(driver, payload.get("dt"), payload.get("member_code"))
+        allotment_recs, driver = find_allotment(driver,'','')
         # update status of all orders incl sip instalment orders
         #update_order_status(driver)
         return allotment_recs, driver
@@ -171,12 +209,12 @@ def get_allotments(driver,payload):
 
     
 
-def find_allotment(driver, dt=None):
+def find_allotment(driver, dt=None, mecd = None):
 #P - PURHCASE, R - REDEMPTION
     if dt:
         dt = dt
     else:
-        dt = datetime.now().strftime('%d-%m-%Y'))
+        dt = datetime.now().strftime('%d-%b-%Y')
 
 
     url = settings.BSESTAR_ALLOTMENT_PG[settings.LIVE]
@@ -205,7 +243,7 @@ def find_allotment(driver, dt=None):
             'order_id' : fields[1].text,
             'order_dt' : fields[4].text,
             'scheme_code' : fields[5].text,
-            'member_id' ; fields[10].text,
+            'member_id' : fields[10].text,
             'folio_num' : fields[12].text,
             'client_code' : fields[15].text,
             'client_name' : fields[16].text,
@@ -231,9 +269,10 @@ def get_transaction_status(driver, payload):
     '''
     get status of transactions
     '''
+    print("get transaction sttus")
     try:
-        order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
-        
+        #order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
+        order_status_recs, driver = find_order_status(driv = driver)
         # update status of all orders incl sip instalment orders
         #update_order_status(driver)
         return order_status_recs, driver
@@ -249,12 +288,14 @@ def get_transaction_status(driver, payload):
         return get_transaction_status(driver,payload)
 
 
-def find_order_status(driver, dt=None, tran_type='P',frmclntcd = None,toclntcd = None):
+def find_order_status(driv, dt=None, tran_type='P',frmclntcd = None,toclntcd = None):
 #P - PURHCASE, R - REDEMPTION
+    driver = driv
+    print("get find_order_status sttus")
     if dt:
         dt = dt
     else:
-        dt = datetime.now().strftime('%d-%m-%Y'))
+        dt = datetime.now().strftime('%d-%b-%Y')
 
 
     url = settings.BSESTAR_ORDER_STATUS_PG[settings.LIVE]
@@ -285,6 +326,13 @@ def find_order_status(driver, dt=None, tran_type='P',frmclntcd = None,toclntcd =
         print("Value is: %s" % option.get_attribute("value"))
         if option.get_attribute("value") == tran_type:
             #selected option purcharse or redemption as per tran_type
+            option.click()
+
+    element = driver.find_element_by_xpath('//*[@id="ddlOStatus"]')
+    all_options = element.find_elements_by_tag_name("option")
+    for option in all_options:
+        print("Value is: %s" % option.get_attribute("value"))
+        if option.get_attribute("value") == 'V':
             option.click()
 
     submit = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "btnSubmit")))

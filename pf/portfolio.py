@@ -14,7 +14,18 @@ import json
 import jwt
 import time
 
+@app.route('/',methods=['GET','POST','OPTIONS'])
+def default():
+    if request.method=='OPTIONS':
+        print("inside PFDATAFETCH options")
+        return make_response(jsonify('inside FUNDDATAFETCH options'), 200)  
 
+    elif request.method=='GET':
+        print("inside PFDATAFETCH GET")
+        return make_response(jsonify('inside FUNDDATAFETCH get'), 200)  
+    elif request.method=='POST':
+        print("inside PFDATAFETCH GET")
+        return make_response(jsonify('inside FUNDDATAFETCH post'), 200)  
 
 @app.route('/pfdatafetch',methods=['GET','POST','OPTIONS'])
 def pfdatafetch():

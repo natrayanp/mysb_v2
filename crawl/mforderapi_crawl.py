@@ -64,6 +64,36 @@ def mforderstatuspg_web():
 
         return order_status_recs
 
+    elif request.method=='GET':   
+        print ("inside mforderstatus_web post")
+        print(request.headers)
+        '''
+        payload= request.get_json()
+        #payload = request.stream.read().decode('utf8')    
+        
+        print("line 42:",payload)
+
+        #check if client code is available in payload
+        frmc = payload.get("from_client_code")
+        toc = payload.get("to_client_code")
+        
+        if frmc == None or frmc == '':
+            resp = make_response({'natstatus': 'error', 'statusdetails': 'No client code provided in request'}, 400)
+            return resp
+        elif toc == None or toc == '':
+            payload["to_client_code"] = frmc
+        '''
+
+        #driver = init_driver("chrome",False)
+        driver = init_driver("firfox",False)
+        payload = ''
+        try:
+            driver = login(driver)
+            order_status_recs, driver = get_transaction_status(driver,payload)
+        finally:
+            quit_driver(driver)
+
+        return order_status_recs
 
 @app.route('/mforderallotpg_web',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
@@ -232,8 +262,8 @@ def get_transaction_status(driver, payload):
     get status of transactions
     '''
     try:
-        order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
-        
+        #order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
+        order_status_recs, driver = find_order_status(driv = driver, '')
         # update status of all orders incl sip instalment orders
         #update_order_status(driver)
         return order_status_recs, driver
@@ -249,7 +279,7 @@ def get_transaction_status(driver, payload):
         return get_transaction_status(driver,payload)
 
 
-def find_order_status(driver, dt=None, tran_type='P',frmclntcd = None,toclntcd = None):
+def find_order_status(driv, dt=None, tran_type='P',frmclntcd = None,toclntcd = None):
 #P - PURHCASE, R - REDEMPTION
     if dt:
         dt = dt
