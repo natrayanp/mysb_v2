@@ -313,7 +313,7 @@ def soap_post_isip_order(client, bse_order):
     if (status == '0'):
         # order successful
         #return order_id
-        print("order successful")
+        print("ISIP order successful")
     else:
         print("order failure")
         '''

@@ -103,6 +103,11 @@ def mfordpaystatusbg(submit_recs_json,userid,entityid):
 
             con.commit()
 
+        '''
+        Approach 1:
+            send CLIENT CODE and MEMEBER ID to registoer for the mforderapijobs.py to pick and check for the order status
+        Approach 2:   (preferred)
+            Dont get any registration, send all the data for the client code which are due and processed by BSE on this date
         command = cur.mogrify(
         """
         SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus = 'PAP' AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
@@ -132,11 +137,8 @@ def mfordpaystatusbg(submit_recs_json,userid,entityid):
             }
             order_recs.append(order_rec)
 
-        st = mforderapi.mfallotcallbackreg()
-
-
-
-    cur.close()
-    con.close()
+        #st = mforderapi.mfallotcallbackreg()
+        '''
+    db.mydbcloseall(con,cur)
 
     return True

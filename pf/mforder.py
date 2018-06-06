@@ -811,7 +811,7 @@ def mfordervalidate():
         sip_data_for_processing = {
             'userid' : userid,
             'entityid' : entityid,
-            #'sip_mandate_details': sip_pay_details
+            'sip_mandate_details': sip_pay_details
         }
         sip_status = mfsiporder.sip_order_processing(sip_data_for_processing)
         ###  this should be a API call in lambda  #####
@@ -848,8 +848,7 @@ def mfordervalidate():
             }
 
         print(json.dumps(resp_recs))
-        cur.close()
-        con.close()  
+        db.mydbcloseall(con,cur) 
 
         return json.dumps(resp_recs)
 
@@ -1135,53 +1134,96 @@ def mfordersubmit():
         print(orderresp)
         #Add code to update the order id
 
+        fndstatus= 'COMPF'
+        savetimestamp = datetime.now()
+        pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
+        segment = 'BSEMF'
+
         ot_orderids=[]
         sip_orderids=[]
 
+
+
         for orderres in orderresp:
-            
+
+            command = cur.mogrify("BEGIN;")
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="DB query failed, BEGIN failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
             if orderres['success_flag'] == '0':
-            
+                
                 if orderres['order_type'] == 'OneTime':
                     ot_orderids.append(orderres['trans_no'])
                     command = cur.mogrify("""
                         UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPY', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+                    print(command)
+                    cur, dbqerr = db.mydbfunc(con,cur,command)
+
+                    if cur.closed == True:
+                        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                            dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                        resp = make_response(jsonify(dbqerr), 400)
+                        return(resp)
                 
                 elif orderres['order_type'] == 'SIP':
                     sip_orderids.append(orderres['trans_no'])
                     command = cur.mogrify("""
-                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'INP', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'SRS', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
-            
+                    print(command)
+                    cur, dbqerr = db.mydbfunc(con,cur,command)
+                    if cur.closed == True:
+                        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                            dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                        resp = make_response(jsonify(dbqerr), 400)
+                        return(resp)
             else:
                 if orderres['order_type'] == 'OneTime':
                     ot_orderids.append(orderres['trans_no'])
                     command = cur.mogrify("""
                         UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+                    
 
                 elif orderres['order_type'] == 'SIP':
                     sip_orderids.append(orderres['trans_no'])
                     command = cur.mogrify("""
                         UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+                
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
 
-            print(command)
+                command = cur.mogrify(
+                    """
+                    UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+                    WHERE ormffndstatus in ('SUBM') 
+                    AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+                    AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+                    """,(fndstatus,pfsavetimestamp,orderres['trans_no'],segment,userid,entityid,segment,userid,entityid,))
 
-            cur, dbqerr = db.mydbfunc(con,cur,command)
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
 
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-
-
-            
             con.commit()
 
-        if orderres['order_type'] == 'OneTime':
+        #if orderres['order_type'] == 'OneTime':
+        if len(ot_orderids) > 0:
             str2 = tuple(ot_orderids)           
             
             frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
@@ -1203,14 +1245,15 @@ def mfordersubmit():
             '''
             print(json.dumps(resp_recs))
             
-        elif orderres['order_type'] == 'SIP':
+        #elif orderres['order_type'] == 'SIP':
+        elif len(sip_orderids) > 0:
             resp_recs = {
                 'status' : 'completed',
                 'sip_orderids': sip_orderids
                 }
-               
-        cur.close()
-        con.close()  
+            print(json.dumps(resp_recs))
+
+        db.mydbcloseall(con,cur)
         return json.dumps(resp_recs)
 
 
@@ -1259,7 +1302,7 @@ def mforderpayment():
             'mandate_id':''
         }
 
-        # FOR BSE PAYMENT LINK : START
+
         print('record_to_submit')
         print(record_to_submit)
 
@@ -1281,18 +1324,18 @@ def mforderpayment():
             return(resp)
 
         con.commit()                                
-
+        # FOR DIRECT PAYMENT LINK
         url_pay=mforderapi.get_payment_link_direct(record_to_submit)
         print('url_pay')
         print(url_pay)
 
         if (url_pay['status']=='failed'):
+            # FOR BSE PAYMENT LINK
             record_to_submit['logout_url']= webapp_settings.LOGOUTURL_BSELNK[webapp_settings.LIVE]
             url_pay = None
             url_pay = mforderapi.get_payment_link_bse(record_to_submit)
-        #Code to be re-written to include http call
-        # FOR BSE PAYMENT LINK : END
-        
+            #Code to be re-written to include http call
+                
     return jsonify(url_pay)
   
 

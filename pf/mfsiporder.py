@@ -73,7 +73,7 @@ def sip_order_processing(sip_data_for_processing):
     print("len(sip_records")
     print(len(sip_records))
     if len(sip_records) > 0:    
-        print("i am insider sip records")
+        print("i am inside sip records")
         for record in sip_records:    
             sip_records_orderids.append(record['mfor_uniquereferencenumber'])
 
@@ -109,7 +109,31 @@ def sip_order_processing(sip_data_for_processing):
         
         recs = mfordersubmit_cpy(sip_submit_rec)
         ###  this should be a API call in lambda  #####
-    
+        fndstatus = 'COMPS'
+        savetimestamp = datetime.now()
+        pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
+        str2 = tuple(recs)         
+        order_id = str2
+        segment = 'BSEMF'
+
+        #for the success records SIP registration is complete so update the status in mforlist: START
+        command = cur.mogrify(
+        """
+        UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+        WHERE ormffndstatus in ('SUBM') 
+        AND orormfpflistid in (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid in %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+        AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+        """,(fndstatus,pfsavetimestamp,order_id,segment,userid,entityid,segment,userid,entityid,))
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="mflist insert Failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+        db.mydbcloseall(con,cur)
+        #for the success records SIP registration is complete so update the status in mforlist: END
     else:
         recs = {
             'status' : 'notrantoprocess',
@@ -188,11 +212,24 @@ def mfordersubmit_cpy(payload_org):
     print(orderresp)
     #Add code to update the order id
 
+    fndstatus= 'COMPF'
+    savetimestamp = datetime.now()
+    pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
+    segment = 'BSEMF'
+
     ot_orderids=[]
     sip_orderids=[]
 
     for orderres in orderresp:
-        
+
+        command = cur.mogrify("BEGIN;")
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="DB query failed, BEGIN failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
         if orderres['success_flag'] == '0':
         
             if orderres['order_type'] == 'OneTime':
@@ -200,13 +237,29 @@ def mfordersubmit_cpy(payload_org):
                 command = cur.mogrify("""
                     UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPY', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                 """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
-            
+                
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+
             elif orderres['order_type'] == 'SIP':
+
                 sip_orderids.append(orderres['trans_no'])
                 command = cur.mogrify("""
-                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'INP', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'SRS', mfor_sipregid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                 """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
-        
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
         else:
             if orderres['order_type'] == 'OneTime':
                 ot_orderids.append(orderres['trans_no'])
@@ -220,12 +273,34 @@ def mfordersubmit_cpy(payload_org):
                     UPDATE webapp.mforderdetails SET mfor_orderstatus = 'FAI', mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                 """,(orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
 
-        print(command)
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
 
-        cur, dbqerr = db.mydbfunc(con,cur,command)
+            command = cur.mogrify(
+                """
+                UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+                WHERE ormffndstatus in ('SUBM') 
+                AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+                AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+                """,(fndstatus,pfsavetimestamp,orderres['trans_no'],segment,userid,entityid,segment,userid,entityid,))
+
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
         con.commit()
 
-    if orderres['order_type'] == 'OneTime':
+    #if orderres['order_type'] == 'OneTime':
+    if len(ot_orderids) > 0:
         str2 = tuple(ot_orderids)           
         
         frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
@@ -247,14 +322,16 @@ def mfordersubmit_cpy(payload_org):
         '''
         print(json.dumps(resp_recs))
         
-    elif orderres['order_type'] == 'SIP':
+    #elif orderres['order_type'] == 'SIP':
+    elif len(sip_orderids) > 0:
         resp_recs = {
             'status' : 'completed',
             'sip_orderids': sip_orderids
             }
-    con.commit()
-    cur.close()
-    con.close()  
+
+        print(json.dumps(resp_recs))
+
+    db.mydbcloseall(con,cur)
     return json.dumps(resp_recs)
 
 ################ COPY FROM mfordersubmit #########################

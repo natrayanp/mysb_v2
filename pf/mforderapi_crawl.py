@@ -313,12 +313,12 @@ def find_order_status(driv, dt=None, tran_type='P',frmclntcd = None,toclntcd = N
         pass
     else:
         frmcltcd = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'txtFromCltCode')))
-        date.clear()
-        date.send_keys(frmclntcd)
+        frmcltcd.clear()
+        frmcltcd.send_keys(frmclntcd)
 
         tocltcd = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'txtToCltCode')))
-        date.clear()
-        date.send_keys(toclntcd)
+        tocltcd.clear()
+        tocltcd.send_keys(toclntcd)
 
     element = driver.find_element_by_xpath('//*[@id="ddlBuySell"]')
     all_options = element.find_elements_by_tag_name("option")
