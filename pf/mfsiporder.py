@@ -108,32 +108,8 @@ def sip_order_processing(sip_data_for_processing):
  
         
         recs = mfordersubmit_cpy(sip_submit_rec)
-        ###  this should be a API call in lambda  #####
-        fndstatus = 'COMPS'
-        savetimestamp = datetime.now()
-        pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
-        str2 = tuple(recs)         
-        order_id = str2
-        segment = 'BSEMF'
-
-        #for the success records SIP registration is complete so update the status in mforlist: START
-        command = cur.mogrify(
-        """
-        UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
-        WHERE ormffndstatus in ('SUBM') 
-        AND orormfpflistid in (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid in %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
-        AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
-        """,(fndstatus,pfsavetimestamp,order_id,segment,userid,entityid,segment,userid,entityid,))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="mflist insert Failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-
+        
         db.mydbcloseall(con,cur)
-        #for the success records SIP registration is complete so update the status in mforlist: END
     else:
         recs = {
             'status' : 'notrantoprocess',
@@ -142,8 +118,6 @@ def sip_order_processing(sip_data_for_processing):
 
 
     return recs    
-    #below code is copy fro mforder.py.mfordersubmit, which is to be removed END
-
 
 
 def sip_prepare_order(orderrecord):
@@ -231,7 +205,8 @@ def mfordersubmit_cpy(payload_org):
             return(resp)
 
         if orderres['success_flag'] == '0':
-        
+            fndstatus = 'COMPS'
+
             if orderres['order_type'] == 'OneTime':
                 ot_orderids.append(orderres['trans_no'])
                 command = cur.mogrify("""
@@ -246,9 +221,10 @@ def mfordersubmit_cpy(payload_org):
                         dbqerr['statusdetails']="selecting order to submit to BSE failed"
                     resp = make_response(jsonify(dbqerr), 400)
                     return(resp)
-
+            
+            
             elif orderres['order_type'] == 'SIP':
-
+                #for the success records SIP registration is complete so update the status in mforlist: START
                 sip_orderids.append(orderres['trans_no'])
                 command = cur.mogrify("""
                     UPDATE webapp.mforderdetails SET mfor_orderstatus = 'SRS', mfor_sipregid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
@@ -260,6 +236,24 @@ def mfordersubmit_cpy(payload_org):
                         dbqerr['statusdetails']="selecting order to submit to BSE failed"
                     resp = make_response(jsonify(dbqerr), 400)
                     return(resp)
+
+                
+                command = cur.mogrify(
+                """
+                UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+                WHERE ormffndstatus in ('SUBM') 
+                AND orormfpflistid in (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid in %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+                AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+                """,(fndstatus,pfsavetimestamp,orderres['order_id'],segment,userid,entityid,segment,userid,entityid,))
+                print(command)
+                cur, dbqerr = db.mydbfunc(con,cur,command)
+                if cur.closed == True:
+                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                        dbqerr['statusdetails']="mflist insert Failed"
+                    resp = make_response(jsonify(dbqerr), 400)
+                    return(resp)
+
+                #for the success records SIP registration is complete so update the status in mforlist: END
         else:
             if orderres['order_type'] == 'OneTime':
                 ot_orderids.append(orderres['trans_no'])
@@ -299,10 +293,8 @@ def mfordersubmit_cpy(payload_org):
 
         con.commit()
 
-    #if orderres['order_type'] == 'OneTime':
     if len(ot_orderids) > 0:
-        str2 = tuple(ot_orderids)           
-        
+        str2 = tuple(ot_orderids)        
         frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
         todt = datetime.now().strftime('%d-%b-%Y')
 

@@ -1,7 +1,7 @@
 from pf import app
 from pf import dbfunc as db
 from pf import jwtdecodenoverify as jwtnoverify
-from pf import background as bg
+from pf import mforderpaystatus_bg as bg
 from pf import webapp_settings
 from pf import mforderapi
 from pf import mfsiporder
@@ -1313,7 +1313,7 @@ def mforderpayment():
         con,cur=db.mydbopncon()
 
         command = cur.mogrify("""
-                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPP', mfor_orderlmtime  = %s WHERE mfor_orderid = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPP', mfor_orderlmtime  = %s WHERE mfor_orderid IN %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(pfsavetimestamp,str2,userid,entityid,))
         print("line:1282",command)
         cur, dbqerr = db.mydbfunc(con,cur,command)
@@ -1322,6 +1322,24 @@ def mforderpayment():
                 dbqerr['statusdetails']="selecting order to submit to BSE failed"
             resp = make_response(jsonify(dbqerr), 400)
             return(resp)
+
+        fndstatus = 'PAYPR'
+        segment = 'BSEMF'
+        command = cur.mogrify(
+        """
+        UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+        WHERE ormffndstatus in ('SUBM') 
+        AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid IN %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+        AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+        """,(fndstatus,pfsavetimestamp,str2,segment,userid,entityid,segment,userid,entityid,))
+
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="selecting order to submit to BSE failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)        
 
         con.commit()                                
         # FOR DIRECT PAYMENT LINK
@@ -1466,9 +1484,7 @@ def prepare_order(orderrecord):
 
         print("order unqrecord id :" + ord['mfor_uniquereferencenumber'] + ", has passed validation")
 
-    con.commit()                                
-    cur.close()
-    con.close()      
+    db.mydbcloseall(con,cur)
 
     return json.dumps({'mfor_uniquereferencenumber': ord['mfor_uniquereferencenumber'],'order_status': orderstat,'amount':ord['mfor_amount']})
     

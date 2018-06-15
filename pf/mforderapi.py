@@ -378,7 +378,6 @@ def store_order_response(response, order_type):
 
 
 
-
 def soap_get_password_paylnk(client):
     method_url = settings.METHOD_PAYLNK_URL[settings.LIVE] + 'GetPassword'
     svc_url = settings.SVC_PAYLNK_URL[settings.LIVE]
@@ -485,6 +484,125 @@ def soap_create_payment(client, payload, pass_dict):
         )
     '''
 
+
+
+@app.route('/childorderapi',methods=['GET','POST','OPTIONS'])
+def childorderapi():
+#def childorderapi(jsondata):
+    
+    if request.method=='OPTIONS':
+        print ("inside childorderapi options")
+        return 'inside childorderapi options'
+
+    elif request.method=='POST':
+        print("inside childorderapi POST")
+        '''
+        print((request))        
+        #userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        payload= request.get_json()
+        #payload=json.loads(payload)
+        print(payload)
+        bse_order = json.loads(payload)
+        '''
+    #bse_orders=json.loads(jsondata)
+    print("insde bse order")
+    #print(bse_orders)
+
+    client = zeep.Client(wsdl=settings.WSDL_ORDERSTAT_URL[settings.LIVE])
+    set_soap_logging()
+    ## get the password 
+    pass_dict = soap_get_password_childorder(client)
+
+    
+    client_code = 'A000000001'
+    fromdt = '28/05/2018'
+    todt = '30/05/2018'
+    MandateId = 'BSE000000016248'
+
+    method_url = settings.METHOD_ORDERSTAT_URL[settings.LIVE] + 'MandateDetails'
+    header_value = soap_set_wsa_headers(method_url, settings.SVC_ORDERSTAT_URL[settings.LIVE])
+    #logout_url = 'http://localhost:8000/orpost'
+    response = client.service.OrderStatus({
+        'ClientCode': client_code,
+        'Filler1': '',
+        'Filler2': '',
+        'Filler3': '',
+        'FromDate': fromdt,
+        'MemberCode':settings.MEMBERID[settings.LIVE],
+        'OrderNo': '1156017',
+        'OrderStatus': '',
+        'OrderType': '',
+        'Password': pass_dict['password'],
+        'SettType': '',
+        'SubOrderType': '',
+        'ToDate':todt,
+        'TransType': '',
+        'UserId': settings.USERID[settings.LIVE]
+        },
+        #settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
+        _soapheaders=[header_value]
+    )
+    print(response)
+    
+
+
+def soap_get_password_childorder(client):
+    method_url = settings.METHOD_ORDERSTAT_URL[settings.LIVE] + 'getPassword'
+    header_value = soap_set_wsa_headers(method_url, settings.SVC_ORDERSTAT_URL[settings.LIVE])
+    #logout_url = 'http://localhost:8000/orpost'
+    response = client.service.getPassword(
+        MemberId=settings.MEMBERID[settings.LIVE], 
+        UserId=settings.USERID[settings.LIVE],
+        Password=settings.PASSWORD[settings.LIVE], 
+        PassKey=settings.PASSKEY[settings.LIVE], 
+        _soapheaders=[header_value]
+    )
+    print('after response')
+    response = response.split('|')
+    print('bse response: ',response)
+    status = response[0]
+    if (status == '100'):
+        # login successful
+        pass_dict = {'password': response[1], 'passkey': settings.PASSKEY[settings.LIVE]}
+        print('#################')
+        print(pass_dict)
+        print('#################')
+        return pass_dict
+    else:
+
+        raise Exception(
+            "BSE error 640: Login unsuccessful for upload API endpoint"
+        )
+		
+    '''
+    response = client.service.getPassword({
+        'UserId': settings.USERID[settings.LIVE],
+        'MemberId': settings.MEMBERID[settings.LIVE],
+        'Password': settings.PASSWORD[settings.LIVE], 
+        'PassKey': settings.PASSKEY[settings.LIVE]
+        },
+        #settings.MEMBERID[settings.LIVE]+'|'+client_code+'|'+logout_url,
+        _soapheaders=[header_value]
+    )
+    
+    print(response)
+
+    if (response.Status == '100'):
+        # login successful
+        pass_dict = {'password': response.ResponseString, 'passkey': settings.PASSKEY[settings.LIVE]}
+        #pass_dict = {'password': response[1], 'passkey': settings.PASSKEY[settings.LIVE]}
+        return pass_dict
+    else:
+        raise Exception(
+            "BSE error 640: Login unsuccessful for upload API endpoint"
+        )
+
+    '''
+
+
+
+
 # every soap query to bse must have wsa headers set 
 def soap_set_wsa_headers(method_url, svc_url):    
 
@@ -509,7 +627,7 @@ def soap_set_wsa_headers(method_url, svc_url):
 
 
 
-
+'''
 
 @app.route('/custcreationapi',methods=['GET','POST','OPTIONS'])
 def create_user_bse():
@@ -652,100 +770,6 @@ def prepare_user_param(payload):
 	return user_param[1:]
 
 
-# prepare the string that will be sent as param for fatca creation in bse
-def prepare_fatca_param(payload):
-	# make the list that will be used to create param
-	print('inside prepare_fatca_param')
-	d=payload
-
-	param_list = [
-		('PAN_RP', d['pan_rp']),
-		('PEKRN', d['pekrn']),
-		('INV_NAME', d['inv_name']),
-		('DOB', d['dob']),
-		('FR_NAME', d['fr_name']),
-		('SP_NAME', d['sp_name']),
-		('TAX_STATUS', d['tax_status']),
-		('DATA_SRC', d['data_src']),
-		('ADDR_TYPE', d['addr_type']),
-		('PO_BIR_INC', d['po_bir_inc']),
-		('CO_BIR_INC', d['co_bir_inc']),
-		('TAX_RES1', d['tax_res1']),
-		('TPIN1', d['tpin1']),
-		('ID1_TYPE', d['id1_type']),
-		('TAX_RES2', d['tax_res2']),
-		('TPIN2', d['tpin2']),
-		('ID2_TYPE', d['id2_type']),
-		('TAX_RES3', d['tax_res3']),
-		('TPIN3', d['tpin3']),
-		('ID3_TYPE', d['id3_type']),
-		('TAX_RES4', d['tax_res4']),
-		('TPIN4', d['tpin4']),
-		('ID4_TYPE', d['id4_type']),
-		('SRCE_WEALT', d['srce_wealt']),
-		('CORP_SERVS', d['corp_servs']),
-		('INC_SLAB', d['inc_slab']),
-		('NET_WORTH', d['net_worth']),
-		('NW_DATE', d['nw_date']),
-		('PEP_FLAG', d['pep_flag']),
-		('OCC_CODE', d['occ_code']),
-		('OCC_TYPE', d['occ_type']),
-		('EXEMP_CODE', d['exemp_code']),
-		('FFI_DRNFE', d['ffi_drnfe']),
-		('GIIN_NO', d['giin_no']),
-		('SPR_ENTITY', d['spr_entity']),
-		('GIIN_NA', d['giin_na']),
-		('GIIN_EXEMC', d['giin_exemc']),
-		('NFFE_CATG', d['nffe_catg']),
-		('ACT_NFE_SC', d['act_nfe_sc']),
-		('NATURE_BUS', d['nature_bus']),
-		('REL_LISTED', d['rel_listed']),
-		('EXCH_NAME', d['exch_name']),
-		('UBO_APPL', d['ubo_appl']),
-		('UBO_COUNT', d['ubo_count']),
-		('UBO_NAME', d['ubo_name']),
-		('UBO_PAN', d['ubo_pan']),
-		('UBO_NATION', d['ubo_nation']),
-		('UBO_ADD1', d['ubo_add1']),
-		('UBO_ADD2', d['ubo_add2']),
-		('UBO_ADD3', d['ubo_add3']),
-		('UBO_CITY', d['ubo_city']),
-		('UBO_PIN', d['ubo_pin']),
-		('UBO_STATE', d['ubo_state']),
-		('UBO_CNTRY', d['ubo_cntry']),
-		('UBO_ADD_TY', d['ubo_add_ty']),
-		('UBO_CTR', d['ubo_ctr']),
-		('UBO_TIN', d['ubo_tin']),
-		('UBO_ID_TY', d['ubo_id_ty']),
-		('UBO_COB', d['ubo_cob']),
-		('UBO_DOB', d['ubo_dob']),
-		('UBO_GENDER', d['ubo_gender']),
-		('UBO_FR_NAM', d['ubo_fr_nam']),
-		('UBO_OCC', d['ubo_occ']),
-		('UBO_OCC_TY', d['ubo_occ_ty']),
-		('UBO_TEL', d['ubo_tel']),
-		('UBO_MOBILE', d['ubo_mobile']),
-		('UBO_CODE', d['ubo_code']),
-		('UBO_HOL_PC', d['ubo_hol_pc']),
-		('SDF_FLAG', d['sdf_flag']),
-		('UBO_DF', d['ubo_df']),
-		('AADHAAR_RP', d['aadhaar_rp']),
-		('NEW_CHANGE', d['new_change']),
-		('LOG_NAMe',d['log_name']),
-		('DOC1', d['filler1']),
-		('DOC2', d['filler2'])
-	]
-
-	# prepare the param field to be returned
-	fatca_param = ''
-	for param in param_list:
-		fatca_param = fatca_param + '|' + str(param[1])
-	# print fatca_param
-	return fatca_param[1:]
-
-## fire SOAP query to get password for Upload API endpoint
-## used by all functions except create_transaction_bse() and cancel_transaction_bse()
-
 def soap_get_password_upload(client):
 	print('inside soap_get_password_upload')
 	method_url = settings.METHOD_UPLOAD_URL[settings.LIVE] + 'getPassword'
@@ -799,11 +823,11 @@ def soap_create_user(client, user_param, pass_dict):
 		#return make_response(jsonify({'statuscode': response[0], 'statusmessage': response[1]}),200)
 		
 	else:		
-		'''
+		
 		raise Exception(
 			"BSE error 644: User creation unsuccessful: %s" % response[1]
 		)
-		'''
+		
 		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':400}
 		#return make_response(jsonify({'statuscode': response[0], 'statusmessage': response[1]}),400)
 
@@ -830,11 +854,11 @@ def soap_create_fatca(client, fatca_param, pass_dict):
 		#return make_response(jsonify({'statuscode': response[0], 'statusmessage': response[1]}),200)
 		
 	else:
-		'''
+		
 		raise Exception(
 			"BSE error 645: Fatca creation unsuccessful: %s" % response[1]
 		)
-		'''
+		
 		return {'bsesttuscode': response[0], 'bsesttusmsg': response[1],'stcdtoreturn':400}
 		#return make_response(jsonify({'statuscode': response[0], 'statusmessage': response[1]}),400)
 
@@ -879,7 +903,7 @@ def soap_set_wsa_headers(method_url, svc_url):
     )
 	header_value = header(Action=method_url, To=svc_url)
 	return header_value
-
+'''
 
 
 
@@ -1074,4 +1098,4 @@ def allotconfcallbackreg(jsondata):
     #save this in database and return
 
     return jsonify({'body':'allotment callback registration successful'})
-    
+

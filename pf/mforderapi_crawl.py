@@ -25,10 +25,10 @@ from time import strptime, sleep
 from dateutil.relativedelta import relativedelta
 from dateutil import tz
 
-@app.route('/mforderstatuspg_web',methods=['GET','POST','OPTIONS'])
+@app.route('/mforderstatuspg',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
 #should be called from mforderapi.
-def mforderstatuspg_web():
+def mforderstatuspg():
     
     if request.method=='OPTIONS':
         print ("inside mforderstatus_web options")
@@ -41,7 +41,6 @@ def mforderstatuspg_web():
         #payload = request.stream.read().decode('utf8')    
         
         print("line 42:",payload)
-
         #check if client code is available in payload
         frmc = payload.get("from_client_code")
         toc = payload.get("to_client_code")
@@ -52,18 +51,7 @@ def mforderstatuspg_web():
         elif toc == None or toc == '':
             payload["to_client_code"] = frmc
 
-
-        driver = init_driver("chrome",False)
-        #driver = init_driver("firefox",False)
-
-        try:
-            driver = login(driver)
-            print("login done")
-            order_status_recs, driver = get_transaction_status(driver,payload)
-            print("get tran done")
-        finally:
-            quit_driver(driver)
-            print("quit done")
+        order_status_recs = mforstaint(payload)
 
         return jsonify(order_status_recs)
 
@@ -103,6 +91,23 @@ def mforderstatuspg_web():
 
         return jsonify(order_status_recs)
 
+def mforstaint(payload):
+#intermediate function whcih can be called directly or api    
+    driver = init_driver("chrome",False)
+    #driver = init_driver("firefox",False)
+
+    try:
+        driver = login(driver)
+        print("login done")
+        order_status_recs, driver = get_transaction_status(driver,payload)
+        print("get tran done")
+    finally:
+        quit_driver(driver)
+        print("quit done")
+
+    return jsonify(order_status_recs)
+
+
 @app.route('/mforderallotpg_web',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
 #should be called from mforderapi.
@@ -119,7 +124,6 @@ def mforderallotpg_web():
         #payload = request.stream.read().decode('utf8')    
         
         print("line 83:",payload)
-
         #check if client code is available in payload
         memcd = payload.get("member_code")
         
@@ -127,16 +131,24 @@ def mforderallotpg_web():
             resp = make_response({'natstatus': 'error', 'statusdetails': 'No Member code provided in request'}, 400)
             return resp
 
-        driver = init_driver("chrome",False)
-        #driver = init_driver("firfox",False)
-
-        try:
-            driver = login(driver)
-            allotment_recs, driver = get_allotments(driver,payload)
-        finally:
-            quit_driver(driver)
+        allotment_recs = mforalltint(payload)
 
         return allotment_recs
+
+def mforalltint(payload):
+
+    driver = init_driver("chrome",False)
+    #driver = init_driver("firfox",False)
+
+    try:
+        driver = login(driver)
+        allotment_recs, driver = get_allotments(driver,payload)
+    finally:
+        quit_driver(driver)
+
+    return allotment_recs
+
+
 
 def login(driver):
     '''
@@ -191,8 +203,8 @@ def get_allotments(driver,payload):
     get status of transactions
     '''
     try:
-        #allotment_recs, driver = find_allotment(driver, payload.get("dt"), payload.get("member_code"))
-        allotment_recs, driver = find_allotment(driver,'','')
+        allotment_recs, driver = find_allotment(driver, payload.get("dt"), payload.get("member_code"))
+        #allotment_recs, driver = find_allotment(driver,'','')
         # update status of all orders incl sip instalment orders
         #update_order_status(driver)
         return allotment_recs, driver
@@ -250,16 +262,16 @@ def find_allotment(driver, dt=None, mecd = None):
             'alloted_nav' : fields[18].text,
             'alloted_unt' : fields[19].text,
             'alloted_amt' : fields[20].text,
-            'remarks' : field[22].text,
-            'order_type' : field[25].text,
-            'order_subtype' : field[33].text,
-            'sipreg_num' : field[26].text,
-            'sipreg_dt' : field[27].text,
+            'remarks' : fields[22].text,
+            'order_type' : fields[25].text,
+            'order_subtype' : fields[33].text,
+            'sipreg_num' : fields[26].text,
+            'sipreg_dt' : fields[27].text,
             'dp_typ' : fields[32].text,
         }
         allotment_recs.append(recs)
     
-    print("line 224:", allotment_recs)
+    print("line 262:", allotment_recs)
 
     return allotment_recs, driver
 
@@ -269,10 +281,10 @@ def get_transaction_status(driver, payload):
     '''
     get status of transactions
     '''
-    print("get transaction sttus")
+    print("line 272: get transaction sttus")
     try:
-        #order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
-        order_status_recs, driver = find_order_status(driv = driver)
+        order_status_recs, driver = find_order_status(driver, payload.get("dt"), payload.get("tran_type"), payload.get("from_client_code"), payload.get("to_client_code"))
+        #order_status_recs, driver = find_order_status(driv = driver)
         # update status of all orders incl sip instalment orders
         #update_order_status(driver)
         return order_status_recs, driver

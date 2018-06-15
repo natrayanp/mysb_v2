@@ -8,7 +8,8 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import auth
 from pf import dbfunc as db
-
+from pf import pancard_verify as panv
+from pf import jwtdecodenoverify as jwtnoverify
 
 import psycopg2
 import jwt
@@ -369,24 +370,8 @@ def signupf():
             print(cur)
             print('consider insert or update is successful')
 
-            responsemsg = "User signup successful. Activation email will be sent to "+email
+            responsemsg = "User signup successful. Activation email will be sent to "+ email
             #print(responsemsg)
-
-            #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START
-
-            command = cur.mogrify("INSERT INTO webapp.notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfmprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregistration',%s,'dashboard','<div fxLayout=#column# fxLayoutWrap><div><p> Welcome. You need complete your registration before start buying the funds. Please complete user registration </p><p>Go to Setting > Registration </div><div>','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
-            cur, dbqerr = db.mydbfunc(con,cur,command)
-            print(dbqerr['natstatus'])
-            if cur.closed == True:
-                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                    dbqerr['statusdetails']="SIGNUP notifimaster update failed"
-                resp = make_response(jsonify(dbqerr), 400)
-                return(resp)
-            #con.commit()                  
-            print(cur)
-            print('consider insert or update is successful')
-
-            #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION END
 
             #INSERT to uccclientmaster & fatcaupload START
 
@@ -422,6 +407,163 @@ def signupf():
 
             print('Client sign up success in All insert updates')
         print('sign up completion response',responsemsg,'will be sent')
-
+        con.commit()
+        
+        responsemsg = checkpanstatus(lgsinuppan,con,cur,lguserid,lgentityid)
+        
         db.mydbcloseall(con,cur)
+
         return (json.dumps({'natstatus':'success','statusdetails':responsemsg}))
+
+@app.route('/updatekyc',methods=['GET','OPTIONS'])
+def updatekyc():
+#This is called by fund data fetch service
+    if request.method=='OPTIONS':
+        print("inside pforderdatafetch options")
+        return make_response(jsonify('inside FUNDDATAFETCH options'), 200)  
+
+    elif request.method=='GET':
+        print("inside pforderdatafetch GET")
+        print((request))        
+        print(request.headers)
+        userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print(userid,entityid)
+        print('after')
+        
+        con,cur=db.mydbopncon()
+        
+        print(con)
+        print(cur)
+
+        command = cur.mogrify("SELECT lgsinuppan FROM webapp.userlogin WHERE lguserid = %s AND lgentityid = %s;",(userid,entityid,) )
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="pf Fetch failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+
+        #Model to follow in all fetch
+        records=[]
+        for record in cur:  
+            records.append(record[0])    
+
+        responsemsg = checkpanstatus(records[0],con,cur,userid,entityid)
+
+    return (json.dumps({'natstatus':'success','statusdetails':responsemsg})) 
+
+
+def checkpanstatus(lgsinuppan,con,cur,lguserid,lgentityid):
+    kycstatus = ["KYC Not Registered", "KYC Registered-New KYC"]
+    responsemsgpan = panv.pancard_verify(lgsinuppan)
+    panname = responsemsgpan.get('pan_name')
+    kycstatusresp = responsemsgpan.get('kyc_status')
+    nfmid=datetime.now().strftime('%Y%m%d%H%M%S')
+
+    
+    if kycstatusresp == "KYC Registered-New KYC":
+
+        command = cur.mogrify("BEGIN;")
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="DB query failed, BEGIN failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+
+
+        #----- UPDATE user status START
+        command = cur.mogrify("UPDATE webapp.userlogin SET lgusername = %s , lguserstatus='R' WHERE lguserid=%s AND lgentityid = %s;",(panname,lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="LGUSERNAME Update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+        #-----INSERT fatcamaster Insert END
+
+        #----- UPDATE user status START
+        command = cur.mogrify("UPDATE webapp.uccclientmaster SET CLIENTAPPNAME1 = %s WHERE ucclguserid=%s AND uccentityid = %s;",(panname,lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="UCCLIENTMASTER User name update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+        #-----INSERT fatcamaster Insert END
+
+        #----- UPDATE user status START
+        command = cur.mogrify("UPDATE webapp.fatcamaster SET inv_name = %s WHERE fatcalguserid=%s AND fatcaentityid = %s;",(panname,lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="UCCLIENTMASTER User name update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+        #-----INSERT fatcamaster Insert END
+
+
+        #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START
+        
+        command = cur.mogrify("INSERT INTO webapp.notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfmprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingkyc',%s,'dashboard','<div fxLayout=#column# fxLayoutWrap><div><p> Welcome. You need complete your registration before start buying the funds. Please complete user registration </p><p>Go to Setting > Registration </div><div>','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s) ON CONFLICT ON CONSTRAINT notimastuniq DO NOTHING;",(nfmid,lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="SIGNUP notifimaster update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+
+        #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION END
+
+    else:
+        #----- UPDATE user status START
+        command = cur.mogrify("UPDATE webapp.userlogin SET lguserstatus='K' WHERE lguserid=%s AND lgentityid = %s;",(lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="LGUSERNAME Update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+        #-----INSERT fatcamaster Insert END
+
+        #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START
+        command = cur.mogrify("INSERT INTO webapp.notifimaster (nfmid,nfname,nfmuserid,nfmscreenid,nfmessage,nfmsgtype,nfmprocessscope,nfmnxtact,nfmnxtactmsg,nfmnxtactnavtyp,nfmnxtactnavdest,nfmstartdt,nfmoctime,nfmlmtime,nfmentityid) VALUES (%s,'pendingregistration',%s,'dashboard','<div fxLayout=#column# fxLayoutWrap><div><p> Welcome. Looks like you have not done KYC. Please complete your KYC </p><p>Go to FAQ to know more </div><br><div><button mat-button color = #primary#>Update KYC status</button></div><div>','notifaction','P','Y','','NONE','NONE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,%s);",(nfmid,lguserid,lgentityid,))
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        print(dbqerr['natstatus'])
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                dbqerr['statusdetails']="SIGNUP notifimaster update failed"
+            resp = make_response(jsonify(dbqerr), 400)
+            return(resp)
+        #con.commit()                  
+        print(cur)
+        print('consider insert or update is successful')
+
+        #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION END
+    con.commit()    
+    responsemsg = "Signup successful. Please login with registered user id"
+    return responsemsg
+

@@ -85,6 +85,19 @@ METHOD_PAYLNK_URL = [
     #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
 ]
 
+#url for BSEStar order status details link
+WSDL_ORDERSTAT_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFWebService/StarMFWebService.svc?singleWsdl' 
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc?singleWsdl'
+]
+SVC_ORDERSTAT_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFWebService/StarMFWebService.svc/Basic'
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc/Basic'
+]
+METHOD_ORDERSTAT_URL = [
+    'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
+    #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
+]
 
 BSESTAR_LOGIN_PG = ["https://bsestarmfdemo.bseindia.com",""]
 

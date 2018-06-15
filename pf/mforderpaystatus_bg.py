@@ -1,7 +1,6 @@
 from pf import app
 from pf import dbfunc as db
 from pf import jwtdecodenoverify as jwtnoverify
-from pf import background as bgjobs
 from pf import mforderapi
 from pf import mfsiporder
 from pf import webapp_settings
@@ -38,7 +37,7 @@ def mfordpaystatusbg(submit_recs_json,userid,entityid):
         pfsavetimestamp=savetimestamp.strftime('%Y-%m-%d %H:%M:%S')
         
         orderstatus = 'PPP'
-        fndstatus= 'SUBM'
+        fndstatus= 'PAYPR'
         bse_status_code = order_res.get('bse_status_code')
         bse_status_msg = order_res.get('bse_status_msg')
         segment = order_res.get('segment')
@@ -52,19 +51,20 @@ def mfordpaystatusbg(submit_recs_json,userid,entityid):
 
         elif bse_status_code == '100':
             if bse_status_msg == 'PAYMENT NOT INITIATED FOR GIVEN ORDER' in bse_status_msg:
-                #Payment not initiated so leave this in PPY status
                 orderstatus = 'PPY'
-                pass
+                fndstatus= 'SUBM'
+
             elif bse_status_msg == 'REJECTED' in bse_status_msg:
                 orderstatus = 'PRJ'
                 fndstatus= 'COMPF'
 
             elif bse_status_msg == 'AWAITING FOR FUNDS CONFIRMATION' in bse_status_msg:
                 orderstatus = 'PAW'               
+                fndstatus= 'PAYPR'
 
             elif bse_status_msg ==  'APPROVED' in bse_status_msg:
                 orderstatus = 'PAP'
-                fndstatus= 'COMPS'
+                fndstatus= 'PALOC'
 
             else:
                 pass
@@ -85,11 +85,11 @@ def mfordpaystatusbg(submit_recs_json,userid,entityid):
                 resp = make_response(jsonify(dbqerr), 400)
                 return(resp)
             
-            if orderstatus != 'SUBM':
+            if orderstatus != 'PAYPR':
                 command = cur.mogrify(
                     """
                     UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
-                    WHERE ormffndstatus in ('SUBM') 
+                    WHERE ormffndstatus in ('PAYPR') 
                     AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_orderid = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
                     AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
                     """,(fndstatus,pfsavetimestamp,order_id,segment,userid,entityid,segment,userid,entityid,))

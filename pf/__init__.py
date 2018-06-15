@@ -12,7 +12,13 @@ from pf import fund
 from pf import mforderapi_crawl
 from pf import jwtdecodenoverify as jwtnoverify
 from pf import loginsignup
-
+from pf import notification
+from pf import notificationprocessing
+from pf import registrationfatca
+from pf import fileupload
+from pf import bankifsc
+from pf import mforderpaystatus_bg
+from pf import mforderapijobs
 '''
 @app.after_request
 def after_request(response):
