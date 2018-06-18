@@ -11,7 +11,7 @@ def mfeodmasterjb():
     
     #1) Build daily poision
     print('Daily POSITION BUILD job start')
-    status = mfeodposischejb(entityid,boddate)
+    status = dailyposition_eod(entityid,boddate)
     if status:
        print('job has error') 
 
@@ -120,7 +120,7 @@ def mfeodmasterend(entityid,boddate):
     return resp
 
 
-def mfeodposischejb(entityid,boddate):
+def dailyposition_eod(entityid,boddate):
  #EOD logic
     #Put a logic to put entity ids that needs EOD
     # For now hard code it here
