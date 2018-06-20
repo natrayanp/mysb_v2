@@ -91,3 +91,7 @@ BSESTAR_LOGIN_PG = ["https://bsestarmfdemo.bseindia.com",""]
 BSESTAR_ORDER_STATUS_PG = ["https://bsestarmfdemo.bseindia.com/RptOrderStatusReportNew.aspx",""]
 
 BSESTAR_ALLOTMENT_PG =["https://bsestarmfdemo.bseindia.com/RptAllotmentStatementNew.aspx",""]
+
+
+
+BSESTAR_HOME_PG = ["https://bsestarmf.in/index.aspx",""]

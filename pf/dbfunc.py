@@ -16,7 +16,7 @@ def mydbfunc(con,cur,command):
         myerror={'natstatus':'warning','statusdetails':''}
         #myerror = {'natstatus':'warning','statusdetails':e}
     finally:
-        if myerror['natstatus'] != "success":    
+        if myerror['natstatus'] == "error":    
             con.rollback()
             cur.close()
             con.close()

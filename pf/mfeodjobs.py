@@ -2,6 +2,7 @@ def mfeodmasterjb():
 #EOD job for MF
     entityid = 'IN'
     boddate = datetime.now().strftime('%Y-%m-%d')
+    
 
     #START OF BOD JOB
     print('Daily EOD START job start')

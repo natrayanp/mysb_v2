@@ -1,14 +1,18 @@
+'''
 from pf import app
 from flask import redirect, request,make_response
-from datetime import datetime, date, timedelta
 from flask import jsonify
 from pf import dbfunc as db
 from pf import mforderapi_crawl as crawl
+'''
 
+from datetime import datetime, date, timedelta
+from multiprocessing import Process
+from multiprocessing import Pool
+import dbfunc as db
 import jwt
 import requests
 import json
-
 
 def dailyposition_build():
     entityid = 'IN'
@@ -22,7 +26,7 @@ def dailyposition_build():
     command = cur.mogrify(
     """
         select json_agg(b) from (
-            SELECT tran_entityid,tran_pfportfolioid,tran_producttype,tran_schemecd,tran_dailypositionflg,count(1) as count FROM webapp.trandetails WHERE tran_dailypositionflg in ('N','P') AND mfor_entityid =%s
+            SELECT tran_entityid,tran_pfportfolioid,tran_producttype,tran_schemecd,tran_dailypositionflg,count(1) as count FROM webapp.trandetails WHERE tran_dailypositionflg in ('N','P') AND tran_entityid =%s
             GROUP BY tran_entityid,tran_pfportfolioid,tran_producttype,tran_schemecd,tran_dailypositionflg
             HAVING count(1) = 1 AND tran_dailypositionflg = 'N'
         ) as b;
@@ -33,8 +37,8 @@ def dailyposition_build():
     if cur.closed == True:
         if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
             dbqerr['statusdetails']="Data for order multiprocess fetch failed"
-        resp = make_response(jsonify(dbqerr), 400)
-        return(resp)
+        #resp = make_response(jsonify(dbqerr), 400)
+        #sreturn(resp)
     print("cur") 
     print(cur)
     
@@ -42,6 +46,7 @@ def dailyposition_build():
     if cur:
         for record in cur:
                 records.append(record[0])
+    records = records[0]
     print(records)
     if records[0] == None:
         records = []
@@ -73,6 +78,7 @@ def process_one_pfrecord(criteria):
         has_db_warn = False
         curproccnt = 100
         prossesedcnt = prossesedcnt + curproccnt
+        print(criteria)
         if prossesedcnt >= criteria['count']:
             reloop = False
         
@@ -94,10 +100,10 @@ def process_one_pfrecord(criteria):
         cur, dbqerr = db.mydbfunc(con,cur,command)
         if cur.closed == True:            
             mm = None
-            if(dbqerr['natstatus'] == "error"):
+            if dbqerr['natstatus'] == "error":
                 mm = "trandetails : error : onepf record fetch failed" 
                 has_db_error = True
-            if dbqerr['natstatus'] == "warning"):
+            if dbqerr['natstatus'] == "warning":
                 mm = "trandetails :  : warning : onepf record fetch failed" 
                 has_db_warn = True
             if mm:
@@ -110,10 +116,11 @@ def process_one_pfrecord(criteria):
         if cur:
             for record in cur:
                 if record:
-                    records.append(record)
+                    records.append(record[0])
                 else:
                     records = []
         
+        print(records)
         posrec_req_date = datetime.strptime(records[0]['tran_orderdate'], '%Y-%m-%d').date()
         posrec_pre_date = posrec_req_date + timedelta(days=-1)
 
@@ -126,15 +133,15 @@ def process_one_pfrecord(criteria):
                     AND dpos_pfportfolioid = %s
                     AND dpos_producttype = %s
                     AND dpos_schemecd  = %s
-                    AND dpso_date >= %s
+                    AND dpos_date >= %s
                     UNION ALL
                     SELECT * FROM webapp.dailyposition 
                     WHERE dpos_entityid =%s
                     AND dpos_pfportfolioid = %s
                     AND dpos_producttype = %s
                     AND dpos_schemecd  = %s
-                    AND dpso_date >= %s                    
-                    ORDER BY dpso_date ASC
+                    AND dpos_date >= %s                    
+                    ORDER BY dpos_date ASC
                     ) as t
             """,(criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],posrec_pre_date,criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],posrec_pre_date,))
             print(command)
@@ -146,7 +153,7 @@ def process_one_pfrecord(criteria):
                 if(dbqerr['natstatus'] == "error"):
                     mm = "trandetails : error : dailyposition & hist record fetch failed" 
                     has_db_error = True
-                if dbqerr['natstatus'] == "warning"):
+                if dbqerr['natstatus'] == "warning":
                     mm = "trandetails :  : warning : dailyposition & hist record fetch failed" 
                     has_db_warn = True
                 if mm:
@@ -162,8 +169,11 @@ def process_one_pfrecord(criteria):
                         positionrecs.append(record)
                     else:
                         positionrecs = []
+            positionrecs = positionrecs[0]
+        
         else:
             pass
+        
 
         tran_ids=[]
         movefromdlypos = False
@@ -172,8 +182,10 @@ def process_one_pfrecord(criteria):
             prev_prec = ''
             match_cnt = 0
             for prec in positionrecs:
+                print(prec)
+                print(rec)
                 if match_cnt == 0:
-                    if prec['dpso_date'] == rec['tran_orderdate']:
+                    if prec['dpos_date'] == rec['tran_orderdate']:
                         match_cnt = 1                
                         
 
@@ -188,9 +200,14 @@ def process_one_pfrecord(criteria):
                     if rec['tran_buysell'] == 'R':
                         prec['dpos_unit'] = prec['dpos_unit'] - rec['tran_unit']
                         prec['dpos_invamount'] = prec['dpos_unit'] * prec['dpos_avgnav']
-                        prec['dpos_totalpnl'] = prec['dpos_totalpnl'] + (rec['tran_invamount']-(tran['tran_unit']*prec['dpos_avgnav']))
+                        prec['dpos_totalpnl'] = prec['dpos_totalpnl'] + (rec['tran_invamount']-(rec['tran_unit']*prec['dpos_avgnav']))
+                        print(prec['dpos_totalpnl'])
                         #don't change the order
-                        prec['dpos_avgnav'] = prec['dpos_invamount'] / prec['dpos_unit']
+                        try:
+                            prec['dpos_avgnav'] = prec['dpos_invamount'] / prec['dpos_unit']
+                        except ZeroDivisionError:
+                            prec['dpos_avgnav'] = 0
+                        
                         prec['dpos_curvalue'] = prec['dpos_unit'] * prec['dpos_curnav']
                         prec['dpos_lmtime'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')                
                     
@@ -217,11 +234,11 @@ def process_one_pfrecord(criteria):
 
             if match_cnt == 0:
                 movefromdlypos = True
-                if posrec_req_date > datetime.now().strftime('%Y-%m-%d'):                
+                if posrec_req_date > datetime.now().date():                
                     print("Fatal: transaction date is a future date")
                 else:
                     #First time record, incase there is no entry inpostition table for the tran date
-                    if prev_prec = '':
+                    if prev_prec == '':
                         prev_prec={}
                         prev_prec['dpos_schemecd'] = rec['tran_schemecd']
                         prev_prec['dpos_schmname'] = rec['tran_schmname']
@@ -234,7 +251,8 @@ def process_one_pfrecord(criteria):
                         prev_prec['dpos_entityid'] = rec['tran_entityid']
 
                     if rec['tran_buysell'] == 'P':
-                        newprec['dpso_date'] = rec['tran_orderdate']
+                        newprec = {}
+                        newprec['dpos_date'] = rec['tran_orderdate']
                         newprec['dpos_schemecd'] = prev_prec['dpos_schemecd']
                         newprec['dpos_schmname'] = prev_prec['dpos_schmname']
                         newprec['dpos_invamount'] = prev_prec['dpos_invamount'] + rec['tran_invamount']
@@ -250,7 +268,7 @@ def process_one_pfrecord(criteria):
                         newprec['dpos_entityid'] = prev_prec['dpos_entityid']
 
                     if rec['tran_buysell'] == 'R':
-                        newprec['dpso_date'] = rec['tran_orderdate']
+                        newprec['dpos_date'] = rec['tran_orderdate']
                         newprec['dpos_schemecd'] = prev_prec['dpos_schemecd']
                         newprec['dpos_schmname'] = prev_prec['dpos_schmname']
                         newprec['dpos_invamount'] = prev_prec['dpos_invamount'] + rec['tran_invamount']
@@ -266,6 +284,9 @@ def process_one_pfrecord(criteria):
                         newprec['dpos_entityid'] = prev_prec['dpos_entityid']
 
                     positionrecs.append(newprec)
+        print("###############################positionrecs###############################")
+        print(positionrecs)
+        print("###############################positionrecs###############################")
 
         command = cur.mogrify("BEGIN;")
         cur, dbqerr = db.mydbfunc(con,cur,command)
@@ -274,7 +295,7 @@ def process_one_pfrecord(criteria):
             if(dbqerr['natstatus'] == "error"):
                 mm = "trandetails : error : DB query failed, BEGIN failed" 
                 has_db_error = True
-            if dbqerr['natstatus'] == "warning"):
+            if dbqerr['natstatus'] == "warning":
                 mm = "trandetails :  : warning : DB query failed, BEGIN failed" 
                 has_db_warn = True
             if mm:
@@ -283,87 +304,34 @@ def process_one_pfrecord(criteria):
                 else:
                     dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
 
+        
+        pos_len = len(positionrecs)
         prec_last_rec = positionrecs.pop()
-        prec_2nd_last_rec_date = positionrecs[-1]['dpso_date']
-        
-        #Example record : [1,2,3,4,5]
-        #Move the last but 2nd record (ie.4th records date) to history table, only if exists in main table
-        command = cur.mogrify(
-        """
-        INSERT INTO webapp.dailyposition_hist
-        SELECT * FROM webapp.dailyposition 
-        WHERE dpos_entityid = %s
-        AND dpos_pfportfolioid = %s
-        AND dpos_producttype = %s
-        AND dpos_schemecd  = %s
-        AND dpso_date = %s
-        """,(criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec_2nd_last_rec_date,))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:            
-            mm = None
-            if(dbqerr['natstatus'] == "error"):
-                mm = prec_2nd_last_rec_date + " : error : daily position movement to history Failed" 
-                has_db_error = True
-            if dbqerr['natstatus'] == "warning"):
-                mm = prec_2nd_last_rec_date + " : warning : daily position movement to history Failed" 
-                has_db_warn = True
-            if mm:
-                if dbqerr['statusdetails'] == None or dbqerr['statusdetails'] == '':
-                    dbqerr['statusdetails']= mm
-                else:
-                    dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
-
-
-        #INSERT the last record (ie.5th records) to main table.        
-        d = json.dumps(prec_last_rec)
-        command = cur.mogrify("""
-            INSERT INTO webapp.dailyposition select * from json_populate_record(NULL::webapp.dailyposition,%s)
-            ON CONFICT (dpos_entityid,dpos_pfportfolioid,dpos_producttype,dpos_schemecd,dpso_date)
-            UPDATE webapp.dailyposition_hist SET dpos_unit = %s, dpos_invamount = %s, dpos_avgnav = %s, dpos_curvalue = %s, dpos_totalpnl = %s, dpos_lmtime = %s
-            WHERE dpos_entityid =%s
-            AND dpos_pfportfolioid = %s
-            AND dpos_producttype = %s
-            AND dpos_schemecd  = %s
-            AND dpso_date = %s        
-        """,(str(d),prec_last_rec['dpos_unit'], prec_last_rec['dpos_invamount'], prec_last_rec['dpos_avgnav'], prec_last_rec['dpos_curvalue'], prec_last_rec['dpos_totalpnl'], prec_last_rec['dpos_lmtime'],criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec_last_rec['dpso_date'],))
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:            
-            mm = None
-            if(dbqerr['natstatus'] == "error"):
-                mm = prec_last_rec['dpso_date'] + " : error : daily position INSERT Failed" 
-                has_db_error = True
-            if dbqerr['natstatus'] == "warning"):
-                mm = prec_last_rec['dpso_date'] + " : warning : daily position INSERT Failed" 
-                has_db_warn = True
-            if mm:
-                if dbqerr['statusdetails'] == None or dbqerr['statusdetails'] == '':
-                    dbqerr['statusdetails']= mm
-                else:
-                    dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
         
 
-        #UPDATE all records except last (ie.1-4 records) to history table.
-        for prec in positionrecs:
+        if pos_len > 1:        
+            prec_2nd_last_rec_date = positionrecs[-1]['dpos_date']
+            #Example record : [1,2,3,4,5]
+            #Move the last but 2nd record (ie.4th records date) to history table, only if exists in main table
             command = cur.mogrify(
             """
-            UPDATE webapp.dailyposition_hist SET dpos_unit = %s, dpos_invamount = %s, dpos_avgnav = %s, dpos_curvalue = %s, dpos_totalpnl = %s, dpos_lmtime = %s
-            WHERE dpos_entityid =%s
+            INSERT INTO webapp.dailyposition_hist
+            SELECT * FROM webapp.dailyposition 
+            WHERE dpos_entityid = %s
             AND dpos_pfportfolioid = %s
             AND dpos_producttype = %s
             AND dpos_schemecd  = %s
-            AND dpso_date = %s                    
-            """,(prec['dpos_unit'], prec['dpos_invamount'], prec['dpos_avgnav'], prec['dpos_curvalue'], prec['dpos_totalpnl'], prec['dpos_lmtime'],criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec['dpso_date'],))       
+            AND dpos_date = %s
+            """,(criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec_2nd_last_rec_date,))
             print(command)
             cur, dbqerr = db.mydbfunc(con,cur,command)
             if cur.closed == True:            
                 mm = None
                 if(dbqerr['natstatus'] == "error"):
-                    mm = prec['dpso_date'] + " : error : daily position UPDATE in history table Failed" 
+                    mm = prec_2nd_last_rec_date + " : error : daily position movement to history Failed" 
                     has_db_error = True
-                if dbqerr['natstatus'] == "warning"):
-                    mm = prec['dpso_date'] + " : warning : daily position UPDATE in history table Failed" 
+                if dbqerr['natstatus'] == "warning":
+                    mm = prec_2nd_last_rec_date + " : warning : daily position movement to history Failed" 
                     has_db_warn = True
                 if mm:
                     if dbqerr['statusdetails'] == None or dbqerr['statusdetails'] == '':
@@ -371,7 +339,66 @@ def process_one_pfrecord(criteria):
                     else:
                         dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
 
-        print(dbqerr['statusdetails'])
+        if pos_len == 1:
+            #INSERT the last record (ie.5th records) to main table.        
+            d = json.dumps(prec_last_rec)
+            command = cur.mogrify("""
+                INSERT INTO webapp.dailyposition AS A select * from json_populate_record(NULL::webapp.dailyposition,%s)
+                ON CONFLICT (dpos_entityid,dpos_pfportfolioid,dpos_producttype,dpos_schemecd,dpos_date)
+                DO
+                UPDATE SET dpos_unit = %s, dpos_invamount = %s, dpos_avgnav = %s, dpos_curvalue = %s, dpos_totalpnl = %s, dpos_lmtime = %s
+                WHERE A.dpos_entityid =%s
+                AND A.dpos_pfportfolioid = %s
+                AND A.dpos_producttype = %s
+                AND A.dpos_schemecd  = %s
+                AND A.dpos_date = %s        
+            """,(str(d),prec_last_rec['dpos_unit'], prec_last_rec['dpos_invamount'], prec_last_rec['dpos_avgnav'], prec_last_rec['dpos_curvalue'], prec_last_rec['dpos_totalpnl'], prec_last_rec['dpos_lmtime'],criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec_last_rec['dpos_date'],))
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:            
+                mm = None
+                if(dbqerr['natstatus'] == "error"):
+                    mm = prec_last_rec['dpos_date'] + " : error : daily position INSERT Failed" 
+                    has_db_error = True
+                if dbqerr['natstatus'] == "warning":
+                    mm = prec_last_rec['dpos_date'] + " : warning : daily position INSERT Failed" 
+                    has_db_warn = True
+                if mm:
+                    if dbqerr['statusdetails'] == None or dbqerr['statusdetails'] == '':
+                        dbqerr['statusdetails']= mm
+                    else:
+                        dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
+
+
+            if pos_len > 1:
+                #UPDATE all records except last (ie.1-4 records) to history table.
+                for prec in positionrecs:
+                    command = cur.mogrify(
+                    """
+                    UPDATE webapp.dailyposition_hist SET dpos_unit = %s, dpos_invamount = %s, dpos_avgnav = %s, dpos_curvalue = %s, dpos_totalpnl = %s, dpos_lmtime = %s
+                    WHERE dpos_entityid =%s
+                    AND dpos_pfportfolioid = %s
+                    AND dpos_producttype = %s
+                    AND dpos_schemecd  = %s
+                    AND dpos_date = %s                    
+                    """,(prec['dpos_unit'], prec['dpos_invamount'], prec['dpos_avgnav'], prec['dpos_curvalue'], prec['dpos_totalpnl'], prec['dpos_lmtime'],criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],prec['dpos_date'],))       
+                    print(command)
+                    cur, dbqerr = db.mydbfunc(con,cur,command)
+                    if cur.closed == True:            
+                        mm = None
+                        if(dbqerr['natstatus'] == "error"):
+                            mm = prec['dpos_date'] + " : error : daily position UPDATE in history table Failed" 
+                            has_db_error = True
+                        if dbqerr['natstatus'] == "warning":
+                            mm = prec['dpos_date'] + " : warning : daily position UPDATE in history table Failed" 
+                            has_db_warn = True
+                        if mm:
+                            if dbqerr['statusdetails'] == None or dbqerr['statusdetails'] == '':
+                                dbqerr['statusdetails']= mm
+                            else:
+                                dbqerr['statusdetails'] = dbqerr['statusdetails'] + "|" + mm
+
+            print(dbqerr['statusdetails'])
         
         if has_db_error:
             con.rollback()
@@ -385,8 +412,7 @@ def process_one_pfrecord(criteria):
                     AND tran_pfportfolioid = %s
                     AND tran_producttype = %s
                     AND tran_schemecd  = %s
-                    AND tran_id IN %s
-                    
+                    AND tran_id IN %s                    
             """,(criteria['tran_entityid'],criteria['tran_pfportfolioid'],criteria['tran_producttype'],criteria['tran_schemecd'],str2,))
             print(command)
 
@@ -396,7 +422,7 @@ def process_one_pfrecord(criteria):
                 if(dbqerr['natstatus'] == "error"):
                     mm = "trandetails : error : onepf record fetch failed" 
                     has_db_error = True
-                if dbqerr['natstatus'] == "warning"):
+                if dbqerr['natstatus'] == "warning":
                     mm = "trandetails :  : warning : onepf record fetch failed" 
                     has_db_warn = True
                 if mm:
@@ -412,3 +438,7 @@ def process_one_pfrecord(criteria):
     db.mydbcloseall(con,cur)
 
     return (dbqerr['statusdetails'])
+
+
+if __name__ == '__main__':
+    xx = dailyposition_build()
