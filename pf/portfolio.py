@@ -912,12 +912,12 @@ def onlypff():
         print(records)
     if records[0]==None:
         print("inside if")
-        records = [[]]
+        records = []
     else:
         pass
-
+    
     print(records)
-    return json.dumps(records)
+    return json.dumps(records[0])
 
 
 '''
@@ -1173,7 +1173,7 @@ def dateformat(datestr):
             return centralstr
         elif(isinstance(datestr, str)):
             print(datestr)
-            datefrm = datetime.strptime(datestr, '%d-%m-%Y')
+            datefrm = datetime.strptime(datestr, '%Y-%m-%d')
             print(datefrm)
         else:
             return datestr

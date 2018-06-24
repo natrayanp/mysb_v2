@@ -33,7 +33,7 @@ def mforderdatafetch():
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         print(userid,entityid)
         print('after')
-        time.sleep(10)
+        #time.sleep(1)
         con,cur=db.mydbopncon()
         
         print(con)

@@ -19,6 +19,7 @@ from pf import fileupload
 from pf import bankifsc
 from pf import mforderpaystatus_bg
 from pf import mforderapijobs
+from pf import dashboard
 '''
 @app.after_request
 def after_request(response):

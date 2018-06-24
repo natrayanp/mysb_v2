@@ -80,7 +80,7 @@ def mainnotification():
             cur, dbqerr = db.mydbfunc(con,cur,command)
             con.commit()
             print('commiting notifiuser')
-            time.sleep(10)
+            #time.sleep(10)
             # to be deleted this is for testing only
         elif lazyloadid != 'dashboard' or lazyloadid != 'signin':
             pass
