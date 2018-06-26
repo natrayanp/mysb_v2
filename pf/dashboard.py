@@ -85,8 +85,10 @@ def dashfetchdata():
             'status'        :  "success" if request_status == None else request_status,
             'failreason'    :  "" if failure_reason == None else failure_reason
         }
-
-    return make_response(jsonify(records), 200)
+    if records['status'] == "success":
+        return make_response(jsonify(records), 200)
+    else:
+        return make_response(jsonify(records), 400)
     
     
 def get_dashbord_data(datareq,pfid=None,prodtyp=None,fundid=None,fromdt=None,todt=None,entityid=None,offset=0):
@@ -307,8 +309,11 @@ def dashchart():
         'failreason'  :     '' if failure_reason == None else failure_reason
     }
 
-    return make_response(jsonify(chart_data), 200)
-
+    
+    if chart_data['status'] == "success":
+        return make_response(jsonify(chart_data), 200)
+    else:
+        return make_response(jsonify(chart_data), 400)
 
 def get_char_data(datareq,pfid,prodtyp,fundid,fromdt,todt,entityid):
     status  = None 
