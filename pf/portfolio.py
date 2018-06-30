@@ -910,14 +910,14 @@ def onlypff():
             records.append(record[0])        
         print("portfolio details only returned for user: "+userid)
         print(records)
-    if records[0]==None:
+    if records[0]:
+        records = records[0]
+    else:
         print("inside if")
         records = []
-    else:
-        pass
-    
+            
     print(records)
-    return json.dumps(records[0])
+    return json.dumps(records)
 
 
 '''

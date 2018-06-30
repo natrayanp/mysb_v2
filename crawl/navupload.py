@@ -31,8 +31,8 @@ def navdownload():
     #driver = init_driver("firefox",False)
     
     #boddate = datetime.now().strftime('%d-%b-%Y')
-    boddate = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
-    boddates = (datetime.now() + timedelta(days=-1)).strftime('%d%m%Y')
+    boddate = (datetime.now() + timedelta(days=-2)).strftime('%d-%b-%Y')
+    boddates = (datetime.now() + timedelta(days=-2)).strftime('%d%m%Y')
     pathstr = "/home/natrayan/project/AwsProject/BSEStarMF/NAV/"
     ffilename = "NAVDWLD_" + boddates + ".txt"
     pfilename = "NAVDWLD_" + boddates + ".part"
@@ -55,7 +55,7 @@ def navdownload():
 
 def import_to_db(filepa):  
 
-    conn = psycopg2.connect("host=localhost dbname=amcdb user=postgres password=password123")
+    conn = psycopg2.connect("host=localhost dbname=postgres user=postgres password=password123")
     cur = conn.cursor()
     
     #with open('/home/natrayan/project/AwsProject/BSEStarMF/NAV/NAVDWLD_18062018.txt', 'r') as f:
