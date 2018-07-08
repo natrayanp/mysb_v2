@@ -11,6 +11,7 @@ from multiprocessing import Process
 from multiprocessing import Pool
 import json
 import time
+import calendar
 
 from flask import request, make_response, jsonify, Response, redirect
 import psycopg2
@@ -1831,3 +1832,133 @@ def mfordpaystatus():
         print("payment status done")
         return jsonify({'body':'payment status done'})
         #return redirect("http://localhost:4200/securedpg/dashboard", code=301)  
+
+@app.route('/mforderhist',methods=['GET','POST','OPTIONS'])
+def mforderhist():
+    if request.method=='OPTIONS':
+        print ("inside orderapi options")
+        return 'inside orderapi options'
+
+    elif request.method=='POST' :
+        print("inside orderapi POST")
+
+        print((request))        
+        #userid,entityid=jwtnoverify.validatetoken(request)
+        print(datetime.now().strftime('%d-%m-%Y %H:%M:%S'))
+        payload= request.get_json()
+        #payload=json.loads(payload)
+        print(payload)
+
+        pageiden = payload.get('pageid',None)
+        # pageiden = sum (daily + weekly + monthly).
+        # pageiden = range (for start and end date sent by client).
+       
+        userid,entityid=jwtnoverify.validatetoken(request)
+
+        request_status_all = []
+        failure_reason_all = None
+        today_order = None
+        weeks_order = None
+        months_order = None
+        req_status = None
+
+        if pageiden == 'sum':
+            # Today's order details
+            today = (datetime.now()).strftime('%d-%b-%Y')
+            startday = today
+            endday = today            
+            today_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            if request_status:
+                request_status_all.append (request_status)
+            failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason_all else failure_reason
+
+            # Weeks's order details excluding today's
+            startday = (datetime.now() + timedelta(days=1)).strftime('%d-%b-%Y')
+            endday = (datetime.now() + timedelta(days=7)).strftime('%d-%b-%Y')            
+            weeks_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            if request_status:
+                request_status_all.append (request_status)
+            failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason else failure_reason
+
+
+            # Month's order details excluding today's & weeks
+            startday = (datetime.now() + timedelta(days=8)).strftime('%d-%b-%Y')
+            endday = (datetime(date.year, date.month, calendar.mdays[date.month])).strftime('%d-%b-%Y')
+            months_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            if request_status:
+                request_status_all.append (request_status)
+            failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason else failure_reason
+
+        elif pageiden == 'range':
+            startday = payload.get('startdt',None)
+            endday = payload.get('enddt',None)
+            if startday == None or endday == None:
+                request_status = "datafail"
+                failure_reason = "Start date and End date missing in the request"            
+            elif startday - endday > 90:
+                request_status = "datafail"
+                failure_reason = "Start date and End date canot exceed 3 months"            
+            else:            
+                daterange,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)                
+
+            if request_status:
+                request_status_all.append (request_status) 
+            failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason_all else failure_reason
+
+        print(failure_reason_all)
+        # Check for DB error and send user friendly error msg to front end
+        
+        if "dbfail" in request_status_all or "datafail" in request_status_all:
+            req_status = "failed"
+
+        order_data = {
+            'todaydata'  :     [] if today_order == None else today_order,
+            'weekdata'   :     [] if weeks_order == None else weeks_order,
+            'monthdata'  :     [] if months_order == None else months_order,
+            'daterange'  :     [] if daterange == None else daterange,
+            'status'     :     'success' if req_status == None else req_status,
+            'failreason' :     '' if failure_reason_all == None else failure_reason_all
+        }
+
+        time.sleep(2)
+        print("order history data records:")
+        print(order_data)
+
+        
+        if order_data['status'] == "success":
+            return make_response(jsonify(order_data), 200)
+        else:
+            return make_response(jsonify(order_data), 400)
+
+def get_order_history(userid,entityid,fromdt,todt):
+    con,cur=db.mydbopncon()    
+    print(con)
+    print(cur)
+    
+    command = cur.mogrify(
+        """
+        SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPP','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
+        """,(userid,entityid,))
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            status = "dbfail"
+            failreason = "pf product wise fetch failed with DB error"
+            print(status,failreason)
+            
+    if cur.rowcount > 1:
+        status = "dbfail"
+        failreason = "pf product wise fetch returned more rows"
+        print(status,failreason)
+
+    if cur.rowcount == 1:
+        record = cur.fetchall()[0][0]
+        print(record)
+          
+    cur.close()
+    con.close()    
+    
+    return record, status, failreason
+
