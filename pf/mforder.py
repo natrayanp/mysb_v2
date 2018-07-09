@@ -1833,7 +1833,7 @@ def mfordpaystatus():
         return jsonify({'body':'payment status done'})
         #return redirect("http://localhost:4200/securedpg/dashboard", code=301)  
 
-@app.route('/mforderhist',methods=['GET','POST','OPTIONS'])
+@app.route('/orderhistfetch',methods=['GET','POST','OPTIONS'])
 def mforderhist():
     if request.method=='OPTIONS':
         print ("inside orderapi options")
@@ -1849,47 +1849,87 @@ def mforderhist():
         #payload=json.loads(payload)
         print(payload)
 
-        pageiden = payload.get('pageid',None)
+        freq = payload.get('freq',None)
         # pageiden = sum (daily + weekly + monthly).
         # pageiden = range (for start and end date sent by client).
-       
-        userid,entityid=jwtnoverify.validatetoken(request)
+        product = payload.get('product',None)
 
-        request_status_all = []
-        failure_reason_all = None
+        print(freq)
+        print(product)
+        
+        #request_status_all = []
+        #failure_reason_all = None
         today_order = None
         weeks_order = None
         months_order = None
-        req_status = None
+        daterange = None
+        failure_reason = None
+        request_status = None
 
-        if pageiden == 'sum':
+        if product == None:
+            request_status = "datafail"
+            failure_reason = "product is sent as blank by client"     
+        elif product == "Mutual Fund":
+            product = 'BSEMF'
+        elif product == "Stocks":
+            product = 'EQ'
+        
+        print(product)
+
+        userid,entityid=jwtnoverify.validatetoken(request)
+
+
+        
+        if freq == 'today':
+            print("inside today")
             # Today's order details
-            today = (datetime.now()).strftime('%d-%b-%Y')
+            today = datetime.now().date()
             startday = today
             endday = today            
-            today_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            print(startday)
+            print(endday)
+            today_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)
+            #today_order,request_status, failure_reason = 'today',None, None
+            
+            '''
             if request_status:
                 request_status_all.append (request_status)
             failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason_all else failure_reason
-
+            '''
+        elif freq == 'week':
+            print("inside week")
             # Weeks's order details excluding today's
-            startday = (datetime.now() + timedelta(days=1)).strftime('%d-%b-%Y')
-            endday = (datetime.now() + timedelta(days=7)).strftime('%d-%b-%Y')            
-            weeks_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            today = datetime.now().date()
+            startday = today - timedelta(days=today.weekday())
+            endday = startday + timedelta(days=6)         
+            print(startday)
+            print(endday)
+            weeks_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday.strftime('%d-%b-%Y'),endday.strftime('%d-%b-%Y'))
+            
+            '''
             if request_status:
                 request_status_all.append (request_status)
             failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason else failure_reason
-
-
+            '''
+        elif freq == 'month':
+            print("inside month")
             # Month's order details excluding today's & weeks
-            startday = (datetime.now() + timedelta(days=8)).strftime('%d-%b-%Y')
-            endday = (datetime(date.year, date.month, calendar.mdays[date.month])).strftime('%d-%b-%Y')
-            months_order,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)
+            today = datetime.now().date()
+            startday = datetime(today.year, today.month, 1)
+            endday = datetime(today.year, today.month, calendar.mdays[datetime.today().month])
+            print(startday)
+            print(endday)
+            #startday = (datetime.now() + timedelta(days=8)).strftime('%d-%b-%Y')
+            #endday = (datetime(date.year, date.month, calendar.mdays[date.month])).strftime('%d-%b-%Y')
+            months_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)
+            
+            '''
             if request_status:
                 request_status_all.append (request_status)
             failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason else failure_reason
-
-        elif pageiden == 'range':
+            '''
+        elif freq == 'adhoc':
+            print("inside adhoc")
             startday = payload.get('startdt',None)
             endday = payload.get('enddt',None)
             if startday == None or endday == None:
@@ -1899,25 +1939,31 @@ def mforderhist():
                 request_status = "datafail"
                 failure_reason = "Start date and End date canot exceed 3 months"            
             else:            
-                daterange,request_status, failure_reason = get_order_history(userid,entityid,startday,endday)                
+                daterange,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)                
+        else:
+            pass
 
-            if request_status:
-                request_status_all.append (request_status) 
-            failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason_all else failure_reason
+        '''
+        if request_status:
+            request_status_all.append (request_status)
 
-        print(failure_reason_all)
+        failure_reason_all = (failure_reason_all +  ' | ' + failure_reason) if failure_reason_all else failure_reason
+        '''
+
+        print(failure_reason)
         # Check for DB error and send user friendly error msg to front end
         
+        '''
         if "dbfail" in request_status_all or "datafail" in request_status_all:
             req_status = "failed"
-
+        '''
         order_data = {
             'todaydata'  :     [] if today_order == None else today_order,
             'weekdata'   :     [] if weeks_order == None else weeks_order,
             'monthdata'  :     [] if months_order == None else months_order,
             'daterange'  :     [] if daterange == None else daterange,
-            'status'     :     'success' if req_status == None else req_status,
-            'failreason' :     '' if failure_reason_all == None else failure_reason_all
+            'status'     :     'success' if request_status == None else request_status,
+            'failreason' :     '' if failure_reason == None else failure_reason
         }
 
         time.sleep(2)
@@ -1930,11 +1976,15 @@ def mforderhist():
         else:
             return make_response(jsonify(order_data), 400)
 
-def get_order_history(userid,entityid,fromdt,todt):
+
+
+def get_order_history(userid,entityid,product,fromdt,todt):
     con,cur=db.mydbopncon()    
     print(con)
     print(cur)
-    
+    record = None
+    status = None 
+    failreason = None
     command = cur.mogrify(
         """
         SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPP','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
@@ -1947,7 +1997,8 @@ def get_order_history(userid,entityid,fromdt,todt):
             status = "dbfail"
             failreason = "pf product wise fetch failed with DB error"
             print(status,failreason)
-            
+    print(cur.fetchall())
+    print(cur.rowcount)
     if cur.rowcount > 1:
         status = "dbfail"
         failreason = "pf product wise fetch returned more rows"
