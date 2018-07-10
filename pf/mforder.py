@@ -1888,7 +1888,7 @@ def mforderhist():
             endday = today            
             print(startday)
             print(endday)
-            today_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)
+            today_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday.strftime('%d-%b-%Y'),endday.strftime('%d-%b-%Y'))
             #today_order,request_status, failure_reason = 'today',None, None
             
             '''
@@ -1921,7 +1921,7 @@ def mforderhist():
             print(endday)
             #startday = (datetime.now() + timedelta(days=8)).strftime('%d-%b-%Y')
             #endday = (datetime(date.year, date.month, calendar.mdays[date.month])).strftime('%d-%b-%Y')
-            months_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)
+            months_order,request_status, failure_reason = get_order_history(userid,entityid,product,startday.strftime('%d-%b-%Y'),endday.strftime('%d-%b-%Y'))
             
             '''
             if request_status:
@@ -1939,7 +1939,7 @@ def mforderhist():
                 request_status = "datafail"
                 failure_reason = "Start date and End date canot exceed 3 months"            
             else:            
-                daterange,request_status, failure_reason = get_order_history(userid,entityid,product,startday,endday)                
+                daterange,request_status, failure_reason = get_order_history(userid,entityid,product,startday.strftime('%d-%b-%Y'),endday.strftime('%d-%b-%Y'))                
         else:
             pass
 
@@ -1966,7 +1966,7 @@ def mforderhist():
             'failreason' :     '' if failure_reason == None else failure_reason
         }
 
-        time.sleep(2)
+        time.sleep(1)
         print("order history data records:")
         print(order_data)
 
@@ -1978,7 +1978,7 @@ def mforderhist():
 
 
 
-def get_order_history(userid,entityid,product,fromdt,todt):
+def get_order_history(userid,entityid,product,fromdt,todt,offset = 0):
     con,cur=db.mydbopncon()    
     print(con)
     print(cur)
@@ -1987,8 +1987,33 @@ def get_order_history(userid,entityid,product,fromdt,todt):
     failreason = None
     command = cur.mogrify(
         """
-        SELECT row_to_json(art) FROM (SELECT mfor_producttype,mfor_orderid,mfor_clientcode FROM webapp.mforderdetails WHERE mfor_orderstatus IN ('PPP','PAW') AND mfor_pfuserid = %s AND mfor_entityid = %s) art;
-        """,(userid,entityid,))
+        SELECT json_agg(b) FROM (
+            SELECT
+                tran_orderdate AS trandate,
+                tran_schemecd AS schemecode,
+                fndmas.fnddisplayname as schemename,
+                tran_producttype AS prodtyp,
+                CASE
+                    WHEN tran_producttype = 'BSEMF' THEN 'MUTUAL FUNDS'
+                    WHEN tran_producttype = 'SGB' THEN 'SGB'
+                    WHEN tran_producttype = 'EQ' THEN 'Equity'
+                    WHEN tran_producttype = 'HEQ' THEN 'Home Equity'
+                END AS product,
+                tran_pfportfolioid AS pfid, tran_unit AS units, tran_nav AS trannav, tran_invamount AS invamt,
+                (
+                    SELECT fndnav.navc_value curnav
+                    FROM webapp.navcurload fndnav
+                    WHERE fndnav.navc_date = (SELECT MAX(A.navc_date) FROM webapp.navcurload A WHERE A.navc_schmcdbse = tran.tran_schemecd)
+                    AND fndnav.navc_schmcdbse = tran.tran_schemecd
+                ) AS curnav                        
+            FROM webapp.trandetails tran
+            LEFT JOIN webapp.fundmaster fndmas ON fndmas.fndschcdfrmbse = tran_schemecd 
+            WHERE tran_producttype = %s AND tran_entityid = %s AND tran_pfuserid = %s
+            AND tran_orderdate BETWEEN %s AND %s
+            ORDER BY tran_orderdate,tran_schemecd,tran_producttype,tran_pfportfolioid
+            OFFSET %s
+        ) b;
+        """,(product, entityid, userid, fromdt, todt, offset,))	
     print(command)
     cur, dbqerr = db.mydbfunc(con,cur,command)
 
@@ -1997,7 +2022,7 @@ def get_order_history(userid,entityid,product,fromdt,todt):
             status = "dbfail"
             failreason = "pf product wise fetch failed with DB error"
             print(status,failreason)
-    print(cur.fetchall())
+    #print(cur.fetchall())
     print(cur.rowcount)
     if cur.rowcount > 1:
         status = "dbfail"
