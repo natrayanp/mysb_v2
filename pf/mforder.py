@@ -1932,12 +1932,15 @@ def mforderhist():
             print("inside adhoc")
             startday = payload.get('startdt',None)
             endday = payload.get('enddt',None)
+            startday = datetime.strptime(startday,'%Y-%m-%d') if startday else startday
+            endday = datetime.strptime(endday,'%Y-%m-%d') if endday else endday
+
             if startday == None or endday == None:
                 request_status = "datafail"
-                failure_reason = "Start date and End date missing in the request"            
-            elif startday - endday > 90:
+                failure_reason = "Start date and End date missing in the request"
+            elif (abs(startday - endday).days) > 90:
                 request_status = "datafail"
-                failure_reason = "Start date and End date canot exceed 3 months"            
+                failure_reason = "Date range canot exceed 3 months"            
             else:            
                 daterange,request_status, failure_reason = get_order_history(userid,entityid,product,startday.strftime('%d-%b-%Y'),endday.strftime('%d-%b-%Y'))                
         else:
