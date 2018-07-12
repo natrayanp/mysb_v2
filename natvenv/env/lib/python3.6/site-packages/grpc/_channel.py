@@ -24,6 +24,8 @@ from grpc import _grpcio_metadata
 from grpc._cython import cygrpc
 from grpc.framework.foundation import callable_util
 
+_LOGGER = logging.getLogger(__name__)
+
 _USER_AGENT = 'grpc-python/{}'.format(_grpcio_metadata.__version__)
 
 _EMPTY_FLAGS = 0
@@ -58,6 +60,17 @@ _STREAM_STREAM_INITIAL_DUE = (
 _CHANNEL_SUBSCRIPTION_CALLBACK_ERROR_LOG_MESSAGE = (
     'Exception calling channel subscription callback!')
 
+_OK_RENDEZVOUS_REPR_FORMAT = ('<_Rendezvous of RPC that terminated with:\n'
+                              '\tstatus = {}\n'
+                              '\tdetails = "{}"\n'
+                              '>')
+
+_NON_OK_RENDEZVOUS_REPR_FORMAT = ('<_Rendezvous of RPC that terminated with:\n'
+                                  '\tstatus = {}\n'
+                                  '\tdetails = "{}"\n'
+                                  '\tdebug_error_string = "{}"\n'
+                                  '>')
+
 
 def _deadline(timeout):
     return None if timeout is None else time.time() + timeout
@@ -91,6 +104,7 @@ class _RPCState(object):
         self.trailing_metadata = trailing_metadata
         self.code = code
         self.details = details
+        self.debug_error_string = None
         # The semantics of grpc.Future.cancel and grpc.Future.cancelled are
         # slightly wonky, so they have to be tracked separately from the rest of the
         # result of the RPC. This field tracks whether cancellation was requested
@@ -137,6 +151,7 @@ def _handle_event(event, state, response_deserializer):
                 else:
                     state.code = code
                     state.details = batch_operation.details()
+                    state.debug_error_string = batch_operation.error_string()
             callbacks.extend(state.callbacks)
             state.callbacks = None
     return callbacks
@@ -168,7 +183,7 @@ def _consume_request_iterator(request_iterator, state, call, request_serializer,
             except Exception:  # pylint: disable=broad-except
                 code = grpc.StatusCode.UNKNOWN
                 details = 'Exception iterating requests!'
-                logging.exception(details)
+                _LOGGER.exception(details)
                 call.cancel(_common.STATUS_CODE_TO_CYGRPC_STATUS_CODE[code],
                             details)
                 _abort(state, code, details)
@@ -177,7 +192,7 @@ def _consume_request_iterator(request_iterator, state, call, request_serializer,
             with state.condition:
                 if state.code is None and not state.cancelled:
                     if serialized_request is None:
-                        code = grpc.StatusCode.INTERNAL  # pylint: disable=redefined-variable-type
+                        code = grpc.StatusCode.INTERNAL
                         details = 'Exception serializing request!'
                         call.cancel(
                             _common.STATUS_CODE_TO_CYGRPC_STATUS_CODE[code],
@@ -209,19 +224,8 @@ def _consume_request_iterator(request_iterator, state, call, request_serializer,
                 if operating:
                     state.due.add(cygrpc.OperationType.send_close_from_client)
 
-    def stop_consumption_thread(timeout):  # pylint: disable=unused-argument
-        with state.condition:
-            if state.code is None:
-                code = grpc.StatusCode.CANCELLED
-                details = 'Consumption thread cleaned up!'
-                call.cancel(_common.STATUS_CODE_TO_CYGRPC_STATUS_CODE[code],
-                            details)
-                state.cancelled = True
-                _abort(state, code, details)
-                state.condition.notify_all()
-
-    consumption_thread = _common.CleanupThread(
-        stop_consumption_thread, target=consume_request_iterator)
+    consumption_thread = threading.Thread(target=consume_request_iterator)
+    consumption_thread.daemon = True
     consumption_thread.start()
 
 
@@ -385,13 +389,23 @@ class _Rendezvous(grpc.RpcError, grpc.Future, grpc.Call):
                 self._state.condition.wait()
             return _common.decode(self._state.details)
 
+    def debug_error_string(self):
+        with self._state.condition:
+            while self._state.debug_error_string is None:
+                self._state.condition.wait()
+            return _common.decode(self._state.debug_error_string)
+
     def _repr(self):
         with self._state.condition:
             if self._state.code is None:
                 return '<_Rendezvous object of in-flight RPC>'
+            elif self._state.code is grpc.StatusCode.OK:
+                return _OK_RENDEZVOUS_REPR_FORMAT.format(
+                    self._state.code, self._state.details)
             else:
-                return '<_Rendezvous of RPC that terminated with ({}, {})>'.format(
-                    self._state.code, _common.decode(self._state.details))
+                return _NON_OK_RENDEZVOUS_REPR_FORMAT.format(
+                    self._state.code, self._state.details,
+                    self._state.debug_error_string)
 
     def __repr__(self):
         return self._repr()
@@ -671,13 +685,8 @@ def _run_channel_spin_thread(state):
                     if state.managed_calls == 0:
                         return
 
-    def stop_channel_spin(timeout):  # pylint: disable=unused-argument
-        with state.lock:
-            state.channel.close(cygrpc.StatusCode.cancelled,
-                                'Channel spin thread cleaned up!')
-
-    channel_spin_thread = _common.CleanupThread(
-        stop_channel_spin, target=channel_spin)
+    channel_spin_thread = threading.Thread(target=channel_spin)
+    channel_spin_thread.daemon = True
     channel_spin_thread.start()
 
 
@@ -804,10 +813,7 @@ def _poll_connectivity(state, channel, initial_try_to_connect):
                     _common.CYGRPC_CONNECTIVITY_STATE_TO_CHANNEL_CONNECTIVITY[
                         connectivity])
                 if not state.delivering:
-                    # NOTE(nathaniel): The field is only ever used as a
-                    # sequence so it's fine that both lists and tuples are
-                    # assigned to it.
-                    callbacks = _deliveries(state)  # pylint: disable=redefined-variable-type
+                    callbacks = _deliveries(state)
                     if callbacks:
                         _spawn_delivery(state, callbacks)
 
@@ -820,10 +826,10 @@ def _moot(state):
 def _subscribe(state, callback, try_to_connect):
     with state.lock:
         if not state.callbacks_and_connectivities and not state.polling:
-            polling_thread = _common.CleanupThread(
-                lambda timeout: _moot(state),
+            polling_thread = threading.Thread(
                 target=_poll_connectivity,
                 args=(state, state.channel, bool(try_to_connect)))
+            polling_thread.daemon = True
             polling_thread.start()
             state.polling = True
             state.callbacks_and_connectivities.append([callback, None])
