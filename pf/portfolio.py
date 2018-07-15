@@ -77,8 +77,9 @@ def pfdatafetch():
         
         print("portfolio details returned for user: "+userid)
         
+
         resp = json.dumps(records)
-    
+    time.sleep(1)
     return resp
 
 @app.route('/pfdatasave',methods=['GET','POST','OPTIONS'])
@@ -862,11 +863,13 @@ def onlypff():
         print(userid,entityid)
         payload= request.get_json()
         print(payload)
+        print("------")
 
         x=[]
         for d in payload:
             x.append(d['pfportfolioid'])
         
+        print(x)
         if len(x) > 0:
             pftoexclude=tuple(x)
         else:
@@ -917,6 +920,7 @@ def onlypff():
         records = []
             
     print(records)
+    time.sleep(2)
     return json.dumps(records)
 
 
