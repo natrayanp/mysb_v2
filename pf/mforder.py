@@ -189,6 +189,9 @@ def mfordersave():
                     filterstr="NEW"
                 elif screenid == "ord":
                     filterstr="INCART"
+                else:
+                    filterstr="INCART"
+
             else:
                 screenid=None
                 print("key screenid not in the submitted record")       
@@ -2070,3 +2073,120 @@ def get_order_history(userid,entityid,product,fromdt,todt,offset = 0):
     
     return record, status, failreason
 
+@app.route('/ordplacedetails',methods=['GET','POST','OPTIONS'])
+#end point to get the sucess failure records for today
+def ordplacedetails():
+    if request.method=='OPTIONS':
+        print ("inside mfordinprogress options")
+        return jsonify({'body':'success'})
+
+    elif request.method=='POST':   
+        print ("inside mfordinprogress post")
+        print(request.headers)
+        payload= request.get_json()
+        print(payload)
+        product = payload.get('prod', None)        #BSEMF,EQ,IN
+        trantype = payload.get('trantype', None)   #sell, buy, stp
+
+        userid,entityid=jwtnoverify.validatetoken(request)
+        status = None
+        failreason = None
+
+        if product == None:
+            status = "datafail"
+            if failreason:
+                failreason = failreason + "product details not sent by client|"
+            else:
+                failreason = "product details not sent by client|"
+        elif trantype == None:
+            status = "datafail"
+            if failreason:
+                failreason = failreason + "No details on the product provided by client|"
+            else:
+                failreason = "No details on the product provided by client|"
+
+        if status == None:
+            if product+trantype == 'BSEMFsell':
+                placeorderrec,request_status,failure_reason = get_order_details(userid,entityid,product,trantype)
+
+
+        # Check for DB error and send user friendly error msg to front end
+        if request_status == "dbfail":
+            request_status = "failed"
+            failure_reason = "Chart Data base Error contact Adminstrator"
+        elif request_status == "datafail":
+            request_status = "failed"
+            failure_reason = "Chart Data Error contact Adminstrator"
+        
+        placeorderrec['status']  = 'success'
+
+        if placeorderrec['status'] == "success":
+            return make_response(jsonify(placeorderrec), 200)
+        else:
+            return make_response(jsonify(placeorderrec), 400)
+
+def get_order_details(userid,entityid,product,trantype):
+    record = None
+    status = None
+    failreason = None
+    con,cur=db.mydbopncon()
+
+    if( (product + trantype) == 'BSEMFsell'):
+        whattran = 'RE'
+    
+    print(con)
+    print(cur)
+    
+    #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
+    #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid AND ormffndstatus='INCART' AND entityid=%s) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s AND entityid=%s) art",(entityid,userid,entityid,))
+    command = cur.mogrify(
+        """
+            select json_agg(c) from (
+            select 
+                COALESCE(b.entityid,a.dpos_entityid) entityid, COALESCE(b.ormffundordunit,0) ormffundordunit, COALESCE(b.orormffndcode,a.dpos_schemecd) orormffndcode, COALESCE(b.orormffundname,a.dpos_schmname) orormffundname, b.orormflistid, b.orormfpflistid,
+                COALESCE(b.orormfprodtype,a.dpos_producttype) orormfprodtype, COALESCE(b.orormftrantype,'N') orormftrantype, COALESCE(b.orormfwhattran,%s) orormfwhattran, COALESCE(b.ororpfuserid,%s) ororpfuserid, COALESCE(b.ororportfolioid,a.dpos_pfportfolioid) ororportfolioid,
+                b.orpfportfolioname, b.ormffndstatus, b.ormffundordelsamt, b.ormffundordelsfreq, b.ormffundordelsstdt, b.ormffundordelstrtyp, b.ormflmtime, b.ormfoctime, b.ormfordererr,
+                b.ormfselctedsip, b.ormfsipdthold, b.ormfsipendt, b.ormfsipinstal, b.ororfndamcnatcode, b.orormfseqnum, b.uniquereferencenumber,
+            case when b.ormffundordelsamt > 0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect, row_to_json(a.*) dailyposition
+            from webapp.dailyposition a
+            left join webapp.pfmforlist b ON b.orormffndcode = a.dpos_schemecd AND b.orormfprodtype = a.dpos_producttype AND b.ororportfolioid = a.dpos_pfportfolioid AND b.orormfwhattran = %s AND b.orormfprodtype = %s 
+            where a.dpos_pfportfolioid in (SELECT pfportfolioid from webapp.pfmaindetail where pfuserid = %s AND entityid = %s) 
+            AND dpos_producttype = %s AND dpos_entityid = %s
+            ) c
+        """,(whattran,userid,trantype,product,userid,entityid,product,entityid,))
+
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    print("#########################################3")
+    print(command)
+    print("#########################################3")
+    print(cur)
+    print(dbqerr)
+    print(type(dbqerr))
+    print(dbqerr['natstatus'])
+    print(cur.rowcount)
+    
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            status = "dbfail"
+            failreason = "order data fetch failed with DB error"
+            print(status,failreason)
+
+    if cur.rowcount > 1:
+        status = "dbfail"
+        failreason = "order data fetch returned more rows"
+        print(status,failreason)
+
+    if cur.rowcount == 1:
+        record = cur.fetchall()[0][0]
+        print("print success records")
+        print(record) 
+
+    print("order details returned for user: "+ userid + "  product :" + product + " trantype: " + trantype)
+
+    placeorderrec = {
+    'orderdata'   :     [] if record == None else record,
+    'status'      :     'success' if status == None else status,
+    'failreason'  :     '' if failreason == None else failreason
+    }
+
+    return placeorderrec,status,failreason

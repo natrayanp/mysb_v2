@@ -8,6 +8,7 @@ from dateutil import tz
 from datetime import datetime
 from datetime import date
 from multiprocessing import Process
+from decimal import Decimal
 
 import psycopg2
 import json
@@ -920,7 +921,7 @@ def onlypff():
         records = []
             
     print(records)
-    time.sleep(2)
+    #time.sleep(2)
     return json.dumps(records)
 
 
