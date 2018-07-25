@@ -135,6 +135,8 @@ def mfordersave():
         print(pfdatas)
         
         userid,entityid=jwtnoverify.validatetoken(request)
+
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         con,cur=db.mydbopncon()
 
         command = cur.mogrify("BEGIN;")
@@ -146,16 +148,18 @@ def mfordersave():
             return(resp)
 
         savetimestamp = datetime.now()
-        pfsavedate=savetimestamp.strftime('%Y%m%d') 
+        pfsavedate = savetimestamp.strftime('%Y%m%d') 
         pfsavetimestamp=savetimestamp.strftime('%Y/%m/%d %H:%M:%S')
-
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         for pfdata in pfdatas:
             pfmflsdatalist=[]
             pfmforlsdatalist=[]
             print("pfdata before removing")
             print(pfdata)
-            savetype = ""
+            savetype = None
+            
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~            
             if 'pfportfolioid' in pfdata:
                 if pfdata.get('pfportfolioid') == "NEW":
                     savetype = "New"
@@ -165,7 +169,7 @@ def mfordersave():
                 #if 'pfportfolioid' itself not in the data it is error we shouuld exit
                 print('pfportfolioid is not in the messages')
                 return jsonify({'natstatus':'error','statusdetails':'Data error (Portfolio id missing)'})
-
+            #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~            
             if 'pfstklist' in pfdata:
                 pfstlsdata = pfdata.pop("pfstklist")            
                 print("pfstlsdata")
@@ -182,18 +186,20 @@ def mfordersave():
                 pfmflsdata=None
                 print("key pfmflist not in the submitted record")
                 #return jsonify({'natstatus':'error','statusdetails':'Data error (mflist missing)'})
+            
+            incartscreens = {'BSEMFbuy','BSEMFsell'}
 
             if'pfscreen' in pfdata:
-                screenid= pfdata.get('pfscreen')
+                screenid= pfdata.get('pfscreen',None)
                 if screenid == "pfs":
                     filterstr="NEW"
-                elif screenid == "ord":
+                elif screenid in incartscreens:
                     filterstr="INCART"
                 else:
                     filterstr="INCART"
 
             else:
-                screenid=None
+                screenid = None
                 print("key screenid not in the submitted record")       
 
 
@@ -2190,3 +2196,289 @@ def get_order_details(userid,entityid,product,trantype):
     }
 
     return placeorderrec,status,failreason
+
+@app.route('/mfordersave1',methods=['GET','POST','OPTIONS'])
+#example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
+def mfordersave1():
+    
+    if request.method=='OPTIONS':
+        print ("inside ordersave options")
+        return jsonify({'body':'success'})
+
+    elif request.method=='POST':   
+        print ("inside ordersave post")
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(request.content_length)
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(request.headers)
+        payload= request.get_json()
+        #payload = request.stream.read().decode('utf8')    
+        
+        pfdatas = payload
+        print(pfdatas)
+        
+        userid,entityid=jwtnoverify.validatetoken(request)
+
+        for pfdata in pfdatas:
+            schmedatas = []
+            orderdatas = []
+            print("pfdata before removing")
+            print(pfdata)
+            savetype = None
+            status = -1
+            failreason = None
+
+            pfid = pfdata.get('pfportfolioid',None)
+
+            incartscreens = {'BSEMFbuy','BSEMFsell'}
+
+            screenid = pfdata.get('pfscreen',None)
+
+            schmedatas, resp_status, resp_failreason = get_after_validate_schemedata(pfdata, screenid)
+            status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+
+            con,cur=db.mydbopncon()
+            command = cur.mogrify("BEGIN;")
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="DB query failed, BEING failed"
+                status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+
+            if screenid == "pfs":
+                filterstr = "NEW"
+                
+                if pfid == "NEW":
+                    savetype = "New"
+                    #Add new pf for the user                    
+                    resp_status,resp_failreason = add_new_pf(pfdata, con, cur, userid, entityid)
+                    status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                    if status > -1:
+                        db.mydbcloseall(con, cur)
+                        resp = make_response(jsonify(failreason), 400)
+                        return(resp)
+
+                    #Add new scheme for the user
+                    for schmedata in schmedatas:
+                        orderdatas, resp_status, resp_failreason = get_after_validate_orderdata(schmedata,screenid)
+                        status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                        if status > -1:
+                            db.mydbcloseall(con, cur)
+                            resp = make_response(jsonify(failreason), 400)
+                            return(resp)
+                        
+                        resp_status,resp_failreason = add_new_scheme(schmedata,screenid)
+                        status, failreason  = get_status(status, resp_status, failreason, resp_failreason) 
+                        if status > -1:
+                            db.mydbcloseall(con, cur)
+                            resp = make_response(jsonify(failreason), 400)
+                            return(resp)
+                        
+                        #Add new order for the user
+                        for orderdata in orderdatas:
+                            resp_status,resp_failreason = add_new_order(orderdata,screenid)
+                            status, failreason  = get_status(status, resp_status, failreason, resp_failreason) 
+                            if status > -1:
+                                db.mydbcloseall(con, cur)
+                                resp = make_response(jsonify(failreason), 400)
+                                return(resp)
+
+                elif pfid:
+                    savetype = "Old"
+                    #Update existing pf for the user   
+                    resp_status,resp_failreason = update_existing_pf()
+                    status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                    
+                    # Add new scheme for the user
+                    # or
+                    # Update existing schme for the user
+                    #       ## Add new order for the user
+                    #       ## or
+                    #       ## Update existing order for the user
+                else:
+                    new_failreason = "screenid not sent in the submitted record"
+                    status, failreason  = get_status(status, 0, failreason, new_failreason)                    
+                    print(status,failreason)  
+
+            elif screenid == "ord":
+                filterstr = "INCART"
+            elif screenid == "BSEMFbuy":
+                if pfid == "NEW" or pfid == None:
+                    new_failreason = "porfolio id missing in submitted record"
+                    status, failreason = get_status(status, 0, failreason, new_failreason)              
+                    print(status,failreason)
+                
+
+
+            elif screenid in incartscreens:
+                filterstr = "INCART"
+            elif screenid == None:
+                status = "datafail"
+                failreason = "screenid not sent in the submitted record"
+                print(status,failreason)
+            else:
+                filterstr = "INCART"
+
+            return 'ok'
+
+def get_after_validate_schemedata(pfdata, prod_type):
+    status = -3
+    failreason = "success"
+    print(prod_type)
+    schmedatas = None
+    if prod_type == "ordBSEMFbuy" or prod_type == "ordBSEMFsell":
+        if 'pfmflist' in pfdata:
+            schmedatas = pfdata.pop("pfmflist")
+            print("schmedatas")
+            print(schmedatas)
+        else:
+            schmedatas = None
+
+    elif prod_type == "ordEQbuy" or prod_type == "ordEQsell":
+        if 'pfstklist' in pfdata:
+            schmedatas = pfdata.pop("pfmflist")
+            print("schmedatas")
+            print(schmedatas)
+        else:
+            schmedatas = None
+    
+    if schmedatas == None:
+        failreason = "scheme data key missin in the submitted record"
+        status = 0
+        print(status,failreason)
+        
+    return schmedatas, status, failreason
+
+def get_after_validate_orderdata(schemedata, screenid):
+    schmedatas = None
+    if screenid == "BSEMFbuy" or screenid == "BSEMFsell":
+        if 'pfmflist' in pfdata:
+            schmedatas = pfdata.pop("pfmflist")
+            print("schmedatas")
+            print(schmedatas)
+        else:
+            schmedatas = None
+
+    elif screenid == "EQbuy" or screenid == "EQsell":
+        if 'pfstklist' in pfdata:
+            schmedatas = pfdata.pop("pfmflist")
+            print("schmedatas")
+            print(schmedatas)
+        else:
+            schmedatas = None
+    
+    if schmedatas == None:
+        failreason = "scheme data key missin in the submitted record"
+        status = 0
+        print(status,failreason)
+
+    return schmedatas, status, failreason
+
+def add_new_pf(pfdata, con, cur, userid, entityid):
+    print('inside add New pf')
+    useridstr = userid
+    pfsavetimestamp= datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    pfdata['pfoctime']= pfsavetimestamp
+    pfdata['pflmtime']= pfsavetimestamp
+    status = None
+    failreason = None
+
+    print('MAX query')
+    command = cur.mogrify("SELECT MAX(pfpfidusrrunno) FROM webapp.pfmaindetail where pfuserid = %s",(useridstr,))
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails'] = "Max Number identification Failed"
+            return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+    
+    record = None
+    if cur.rowcount == 1:
+        record = cur.fetchall()
+
+    print("iam printing records to see")
+    print(record)
+    
+    if record:
+        if record[0] == None:
+            pfmainnextmaxval = 1
+        else:
+            if(type(record[0]) == "Decimal"):
+                pfmainnextmaxval = int(Decimal(record[0]))+1                                
+            else:
+                pfmainnextmaxval = record[0] + 1
+    else:
+        return (get_status(status, 0, "Max Number fetch returned mutiple rows" , failreason))
+
+    pfdata['pfpfidusrrunno'] = str(pfmainnextmaxval)
+    pfdata['pfportfolioid'] = useridstr + str(pfmainnextmaxval)
+    
+    if pfdata.get('pfbeneusers') == None:
+        pfdata['pfbeneusers'] = useridstr
+    
+    pfdata['entityid'] = entityid
+
+    pfdatajsondict = json.dumps(pfdata)
+
+    command = cur.mogrify("INSERT INTO webapp.pfmaindetail select * from json_populate_record(NULL::webapp.pfmaindetail,%s);",(str(pfdatajsondict),))
+
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails']="Couldn't save Porfolio (main insert  Failed).  Contact support"
+            return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+
+    if status < 0:
+        return (get_status(status, -3, failreason , "success"))
+    else:
+        return (get_status(status, None, failreason , "success"))
+
+def update_existing_pf():
+    return 'ok'
+
+def add_new_scheme(schmedata, prod_trantype): 
+    #taking tran type here to accomodate short sell ie...selling a scheme before buying (going short)
+    return 'ok'
+
+def update_existing_scheme(schmedata, prod_trantype):
+    return 'ok'
+
+def add_new_order(orderdata, prod, trantype):
+    return 'ok'
+
+def update_existing_order(orderdata, prod_trantype):
+    return 'ok'
+
+def get_status(curstatus,newstatus,curreason, newreason):
+    '''
+    status =   
+                -3 --> success
+                -1 --> empty
+                0  --> data error
+                1  --> db error
+                2  --> both data and db error
+    '''
+    if curstatus == None:
+        curstatus = -1
+    setstatus = -1
+    if newstatus == -3:
+        setstatus = -3
+        setreason = None
+    else:
+        if curstatus < 0:
+            setstatus = newstatus
+        elif curstatus == 2:
+            setstatus = curstatus
+        elif curstatus == newstatus:
+            setstatus = curstatus
+        elif curstatus != newstatus:
+            setstatus = 2
+
+        if curreason and setstatus > -1:
+            setreason = curreason + " | " + newreason
+        else:
+            setreason = newreason
+
+    return setstatus, setreason
