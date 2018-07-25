@@ -2139,6 +2139,7 @@ def get_order_details(userid,entityid,product,trantype):
 
     if( (product + trantype) == 'BSEMFsell'):
         whattran = 'RE'
+        fndflowstatus = 'INCART'
     
     print(con)
     print(cur)
@@ -2146,20 +2147,67 @@ def get_order_details(userid,entityid,product,trantype):
     #cur.execute("select row_to_json(art) from (select a.*, (select json_agg(b) from (select * from pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select * from pfmflist where pfportfolioid = a.pfportfolioid ) as c) as pfmflist from pfmaindetail as a where pfuserid =%s ) art",(userid,))
     #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid AND ormffndstatus='INCART' AND entityid=%s) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s AND entityid=%s) art",(entityid,userid,entityid,))
     command = cur.mogrify(
-        """
-            select json_agg(c) from (
-            select 
-                COALESCE(b.entityid,a.dpos_entityid) entityid, COALESCE(b.ormffundordunit,0) ormffundordunit, COALESCE(b.orormffndcode,a.dpos_schemecd) orormffndcode, COALESCE(b.orormffundname,a.dpos_schmname) orormffundname, b.orormflistid, b.orormfpflistid,
-                COALESCE(b.orormfprodtype,a.dpos_producttype) orormfprodtype, COALESCE(b.orormftrantype,'N') orormftrantype, COALESCE(b.orormfwhattran,%s) orormfwhattran, COALESCE(b.ororpfuserid,%s) ororpfuserid, COALESCE(b.ororportfolioid,a.dpos_pfportfolioid) ororportfolioid,
-                b.orpfportfolioname, b.ormffndstatus, b.ormffundordelsamt, b.ormffundordelsfreq, b.ormffundordelsstdt, b.ormffundordelstrtyp, b.ormflmtime, b.ormfoctime, b.ormfordererr,
-                b.ormfselctedsip, b.ormfsipdthold, b.ormfsipendt, b.ormfsipinstal, b.ororfndamcnatcode, b.orormfseqnum, b.uniquereferencenumber,
-            case when b.ormffundordelsamt > 0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect, row_to_json(a.*) dailyposition
-            from webapp.dailyposition a
-            left join webapp.pfmforlist b ON b.orormffndcode = a.dpos_schemecd AND b.orormfprodtype = a.dpos_producttype AND b.ororportfolioid = a.dpos_pfportfolioid AND b.orormfwhattran = %s AND b.orormfprodtype = %s 
-            where a.dpos_pfportfolioid in (SELECT pfportfolioid from webapp.pfmaindetail where pfuserid = %s AND entityid = %s) 
-            AND dpos_producttype = %s AND dpos_entityid = %s
-            ) c
-        """,(whattran,userid,trantype,product,userid,entityid,product,entityid,))
+    """
+    WITH portport as (SELECT dpos_pfportfolioid, dpos_schemecd, dpos_producttype FROM webapp.dailyposition WHERE dpos_producttype = %s AND dpos_entityid = %s AND dpos_pfuserid = %s) 				
+    SELECT json_agg(art) FROM (
+            (SELECT ls.*,
+                (SELECT row_to_json(dpv.*) FROM webapp.dailyposition dpv WHERE dpv.dpos_pfportfolioid =  ls.orportfolioid  AND dpv.dpos_schemecd = ls.ormffndcode ) as dailyposition,
+                (SELECT json_agg(d) FROM 
+                    (
+                    with s as
+                        (SELECT orl.*,
+                        case when COALESCE(orl.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect
+                        FROM webapp.pfmforlist orl WHERE orl.orormflistid = ls.ormflistid 
+                        AND orl.orormfprodtype = %s AND orormfwhattran = %s AND ormffndstatus = %s)
+                    select s.*,
+                    case when COALESCE(s.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect, 
+                    COALESCE(s.ormffundordunit,0) ormffundordunit, COALESCE(s.entityid,ls.entityid) entityid, COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode, COALESCE(s.orormffundname,ls.ormffundname) orormffundname,
+                    COALESCE(s.orormfprodtype,ls.ormfprodtype) orormfprodtype, COALESCE(s.orormfwhattran,%s) orormfwhattran, COALESCE(s.ororpfuserid,ls.orpfuserid) ororpfuserid,
+                    COALESCE(s.ororportfolioid,ls.orportfolioid) ororportfolioid, COALESCE(s.orormflistid,ls.ormflistid) orormflistid
+                    from (select 1 as x) x 
+                    left join s on x.x = 1
+                    )
+                as d) as ormffundorderlists 
+            FROM webapp.pfmflist ls where ls.orportfolioid in (SELECT distinct dpos_pfportfolioid FROM portport) 
+            AND ls.ormffndcode in (SELECT distinct dpos_schemecd FROM portport WHERE dpos_pfportfolioid = ls.orportfolioid) 
+            AND ls.ormfprodtype = %s 
+            AND ls.orpfuserid = %s AND ls.entityid = %s
+            ) 
+    ) art;
+    """,(product,entityid,userid,product,whattran,fndflowstatus,whattran,product,userid,entityid,))
+
+
+    '''
+    QUERY WITH DATA TO RUN FOR CHECKS
+    WITH portport as (select dpos_pfportfolioid, dpos_schemecd, dpos_producttype from webapp.dailyposition where dpos_producttype = 'BSEMF' AND dpos_entityid = 'IN' AND dpos_pfuserid =  '0YzmOxwmwjZM1i7ZCLY5hLfn7SG3') 				
+    select row_to_json(art) from (
+
+                                            (select ls.*,
+                                                (select row_to_json(dpv.*) from webapp.dailyposition dpv where dpv.dpos_pfportfolioid  = ls.orportfolioid  AND dpv.dpos_schemecd = ls.ormffndcode ) as dailyposition,												 	
+                                                (select json_agg(d) from 
+                                                    (
+                                                    with s as
+                                                (select orl.*
+                                                        from webapp.pfmforlist orl 
+                                                        where orl.orormflistid = ls.ormflistid 
+                                                        AND orl.orormfprodtype = 'BSEMF' AND orormfwhattran = 'R' AND ormffndstatus = 'INCART') 
+                                                        select s.*, 
+                                                                case when COALESCE(s.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect,
+                                                                COALESCE(s.ormffundordunit,0) ormffundordunit,
+                                                                COALESCE(s.entityid,ls.entityid) entityid,
+                                                                COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode
+                                                    from (select 1 as x) x 
+                                                    left join s on x.x = 1
+                                                        )
+                                                    as d) as ormffundorderlists 
+                                            from webapp.pfmflist ls where ls.orportfolioid in (SELECT distinct dpos_pfportfolioid FROM portport) 
+                                            and ls.ormffndcode in (SELECT distinct dpos_schemecd FROM portport) 
+                                            AND ls.ormfprodtype = 'BSEMF'  AND ls.orpfuserid = '0YzmOxwmwjZM1i7ZCLY5hLfn7SG3' AND ls.entityid = 'IN'
+                                            ) 
+                                        
+                                ) art;
+    '''
+
 
     cur, dbqerr = db.mydbfunc(con,cur,command)
     print("#########################################3")
@@ -2462,7 +2510,9 @@ def get_status(curstatus,newstatus,curreason, newreason):
     '''
     if curstatus == None:
         curstatus = -1
+
     setstatus = -1
+    
     if newstatus == -3:
         setstatus = -3
         setreason = None
