@@ -54,6 +54,14 @@ def mforderdatafetch():
             else:
                 failreason = "Transaction type not sent|"
 
+        if trantype == "buy":
+            whattrantype = 'P'
+        elif trantype == "sell":
+            whattrantype = 'R'
+
+        fndstatus = 'INCART'
+
+
         print('after')
         #time.sleep(1)
         record=None
@@ -68,14 +76,25 @@ def mforderdatafetch():
             #command = cur.mogrify("select row_to_json(art) from (select a.*,(select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid = c.ormflistid AND ormffndstatus='INCART' AND entityid=%s) as d) as ormffundorderlists from webapp.pfmflist c where orportfolioid = a.pfportfolioid ) as c) as pfmflist from webapp.pfmaindetail as a where pfuserid =%s AND entityid=%s) art",(entityid,userid,entityid,))
             command = cur.mogrify(
                 """
-                WITH portport as (select ororportfolioid,orormflistid,orormfpflistid from webapp.pfmforlist where ormffndstatus = 'INCART' AND orormfprodtype = %s AND orormfwhattran = %s AND ororpfuserid = %s AND entityid = %s) 
-                select row_to_json(art) from (
+                WITH portport as (select ororportfolioid,orormflistid,orormfpflistid from webapp.pfmforlist where ormffndstatus = %s AND orormfprodtype = %s AND orormfwhattran = %s AND ororpfuserid = %s AND entityid = %s) 
+                select json_agg(art) from (
                 select a.*,
                 (select json_agg(b) from (select * from webapp.pfstklist where pfportfolioid = a.pfportfolioid ) as b) as pfstklist, 
-                (select json_agg(c) from (select c.*,(select json_agg(d) from (select * from webapp.pfmforlist where orormflistid in (SELECT distinct orormflistid FROM PORTPORT) AND ororportfolioid =a.pfportfolioid AND orormflistid=c.ormflistid AND ormffndstatus = 'INCART' AND entityid = %s ORDER BY ormffundordelstrtyp) as d) as ormffundorderlists 
-                from webapp.pfmflist c where ormflistid in (SELECT distinct orormflistid FROM portport) AND  entityid = %s AND orportfolioid =a .pfportfolioid ) as c) as pfmflist 
+                (select json_agg(c) from 
+                    (select c.*,
+                        (select json_agg(d) from 
+                            (select * from webapp.pfmforlist 
+                                where orormflistid in (SELECT distinct orormflistid FROM PORTPORT) 
+                                AND ororportfolioid =a.pfportfolioid AND orormflistid=c.ormflistid 
+                                AND ormffndstatus = %s  AND orormfwhattran = %s
+                                AND entityid = %s ORDER BY ormffundordelstrtyp
+                            ) as d
+                        ) as ormffundorderlists 
+                    from webapp.pfmflist c where ormflistid in (SELECT distinct orormflistid FROM portport) AND  entityid = %s AND orportfolioid =a .pfportfolioid 
+                    ) as c
+                ) as pfmflist 
                 from webapp.pfmaindetail as a where pfuserid = %s AND entityid = %s AND pfportfolioid IN (SELECT distinct ororportfolioid FROM portport) ORDER BY pfportfolioid  ) art
-                """,(prod,trantype,userid,entityid,entityid,entityid,userid,entityid,))
+                """,(fndstatus,prod,whattrantype,userid,entityid,fndstatus,whattrantype,entityid,entityid,userid,entityid,))
 
             cur, dbqerr = db.mydbfunc(con,cur,command)
             print("#########################################3")
@@ -2146,7 +2165,7 @@ def get_order_details(userid,entityid,product,trantype,pfid):
     con,cur=db.mydbopncon()
 
     if( (product + trantype) == 'BSEMFsell'):
-        whattran = 'RE'
+        whattran = 'R'
         fndflowstatus = 'INCART'
 
     if (pfid == None):
@@ -2167,14 +2186,18 @@ def get_order_details(userid,entityid,product,trantype,pfid):
                     (
                     with s as
                         (SELECT orl.*,
-                        case when COALESCE(orl.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect
+                        case when COALESCE(orl.ormffundordunit,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect
                         FROM webapp.pfmforlist orl WHERE orl.orormflistid = ls.ormflistid 
                         AND orl.orormfprodtype = %s AND orormfwhattran = %s AND ormffndstatus = %s)
                     select s.*,
-                    case when COALESCE(s.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect, 
+                    case when COALESCE(s.ormffundordunit,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect, 
                     COALESCE(s.ormffundordunit,0) ormffundordunit, COALESCE(s.entityid,ls.entityid) entityid, COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode, COALESCE(s.orormffundname,ls.ormffundname) orormffundname,
                     COALESCE(s.orormfprodtype,ls.ormfprodtype) orormfprodtype, COALESCE(s.orormfwhattran,%s) orormfwhattran, COALESCE(s.ororpfuserid,ls.orpfuserid) ororpfuserid,
-                    COALESCE(s.ororportfolioid,ls.orportfolioid) ororportfolioid, COALESCE(s.orormflistid,ls.ormflistid) orormflistid
+                    COALESCE(s.ororportfolioid,ls.orportfolioid) ororportfolioid, COALESCE(s.orormflistid,ls.ormflistid) orormflistid,
+                    COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode, COALESCE(s.orormftrantype,'NEW') orormftrantype,
+                    COALESCE(s.ormffndstatus,%s) ormffndstatus, COALESCE(s.ormffundordelstrtyp,'BSMFsell') ormffundordelstrtyp,
+                    COALESCE(s.ormffundordelsstdt,'0') ormffundordelsstdt, COALESCE(s.ormffundordelsfreq,'0') ormffundordelsfreq,
+                    COALESCE(s.ormffundordelsamt,0) ormffundordelsamt, COALESCE(s.ormfsipinstal,0) ormfsipinstal
                     from (select 1 as x) x 
                     left join s on x.x = 1
                     )
@@ -2185,7 +2208,7 @@ def get_order_details(userid,entityid,product,trantype,pfid):
             AND ls.orpfuserid = %s AND ls.entityid = %s
             ) 
     ) art;
-    """,(product,entityid,userid,pfid,product,whattran,fndflowstatus,whattran,product,userid,entityid,))
+    """,(product,entityid,userid,pfid,product,whattran,fndflowstatus,whattran,fndflowstatus,product,userid,entityid,))
 
 
     '''
@@ -2206,7 +2229,10 @@ def get_order_details(userid,entityid,product,trantype,pfid):
                                                                 case when COALESCE(s.ormffundordelsamt,0)>0 THEN 'true'::boolean ELSE 'false'::boolean END orderselect,
                                                                 COALESCE(s.ormffundordunit,0) ormffundordunit,
                                                                 COALESCE(s.entityid,ls.entityid) entityid,
-                                                                COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode
+                                                                COALESCE(s.orormffndcode,ls.ormffndcode) orormffndcode, COALESCE(s.orormftrantype,'N') orormftrantype,
+                                                                COALESCE(s.ormffndstatus,'INCART') ormffndstatus, COALESCE(s.ormffundordelstrtyp,'BSMFsell') ormffundordelstrtyp,
+                                                                COALESCE(s.ormffundordelsstdt,'0') ormffundordelsstdt, COALESCE(s.ormffundordelsfreq,'0') ormffundordelsfreq,
+                                                                COALESCE(s.ormffundordelsamt,0) ormffundordelsamt, COALESCE(s.ormfsipinstal,0) ormfsipinstal,
                                                     from (select 1 as x) x 
                                                     left join s on x.x = 1
                                                         )
@@ -2277,9 +2303,9 @@ def mfordersave1():
         print(pfdatas)
         
         userid,entityid=jwtnoverify.validatetoken(request)
-        affected_pfid = []
-        affected_schemeid = []
-        affected_orderid = []
+        affected_pfids = []
+        affected_schemeids = []
+        affected_orderids = []
 
         for pfdata in pfdatas:
             schmedatas = []
@@ -2288,6 +2314,7 @@ def mfordersave1():
             print(pfdata)
             savetype = None
             status = -1
+            neworder_seqnum = 1
             failreason = None
 
             pfid = pfdata.get('pfportfolioid',None)
@@ -2306,11 +2333,12 @@ def mfordersave1():
                 if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
                     dbqerr['statusdetails']="DB query failed, BEING failed"
                 status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                print(status," : ", failreason)
                 resp = make_response(jsonify(dbqerr), 400)
                 return(resp)
-
+            print("starting screen filters")
+            print(screenid)
             if screenid == "pfs":
-                filterstr = "NEW"
                 
                 if pfid == "NEW":
                     savetype = "New"
@@ -2335,7 +2363,7 @@ def mfordersave1():
                             resp = make_response(jsonify(failreason), 400)
                             return(resp)
                         
-                        resp_status,resp_failreason = add_new_scheme(schmedata,screenid)
+                        scheme_code, resp_status,resp_failreason = add_new_scheme(pfdata, schmedata, screenid, entityid, userid, con, cur)
                         status, failreason  = get_status(status, resp_status, failreason, resp_failreason) 
                         if status > -1:
                             command = cur.mogrify("ROLLBACK;")
@@ -2346,12 +2374,9 @@ def mfordersave1():
                         
                         #Add new order for the user
                         for orderdata in orderdatas:
-                            resp_status,resp_failreason = add_new_order(pfdata,schemedata,orderdata,screenid)
+                            orderid,resp_status,resp_failreason = add_new_order(pfdata, schmedata, orderdata, screenid, con, cur, userid, entityid, neworder_seqnum)
                             status, failreason  = get_status(status, resp_status, failreason, resp_failreason) 
                             if status > -1:
-                                command = cur.mogrify("ROLLBACK;")
-                                cur, dbqerr = db.mydbfunc(con,cur,command)
-                                db.mydbcloseall(con, cur)
                                 resp = make_response(jsonify(failreason), 400)
                                 return(resp)
 
@@ -2372,51 +2397,133 @@ def mfordersave1():
                     status, failreason  = get_status(status, 0, failreason, new_failreason)                    
                     print(status,failreason)  
 
-            elif screenid == "ord":
-                filterstr = "INCART"
+            # IF CON, CUR sent to a function rollback should happen there else rollback to be included in main function
+
             elif screenid == "ordBSEMFbuy":
+                print(pfid)
                 if pfid == "NEW" or pfid == None:
                     new_failreason = "porfolio id missing in submitted record"
                     status, failreason = get_status(status, 0, failreason, new_failreason)              
                     print(status,failreason)
 
-                    if status < 0:
-                        #Update existing order under the scheme
-                        for schmedata in schmedatas:
-                            orderdatas, resp_status, resp_failreason = get_after_validate_orderdata(schmedata,screenid)
-                            status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
-                            if status > -1:
-                                command = cur.mogrify("ROLLBACK;")
-                                cur, dbqerr = db.mydbfunc(con,cur,command)
-                                db.mydbcloseall(con, cur)
+                if status < 0:
+                    # Loop through Schemedata
+                    for schmedata in schmedatas:
+                        print("getting orderdata")
+                        print("schemdata : ",schmedata)
+                        orderdatas, resp_status, resp_failreason = get_after_validate_orderdata(schmedata,screenid)
+                        status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                        if status > -1:
+                            command = cur.mogrify("ROLLBACK;")
+                            cur, dbqerr = db.mydbfunc(con,cur,command)
+                            db.mydbcloseall(con, cur)
+                            resp = make_response(jsonify(failreason), 400)
+                            return(resp)
+                        print("getting orderdata complete")
+                        print(orderdatas)
+                        # ADD or UPDATE SchemeData for the user's portfolio
+                        # check if the schme id already exists
+                        schm_code, resp_status, resp_failreason  = check_scheme_exists(pfdata, schmedata, con, cur, userid, entityid)
+                        status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                        print(schm_code)
+                        if status < 0:
+                            if schm_code != "" or schm_code == None:
+                                # Existing Scheme update
+                                print("shcme update")
+                                resp_status,resp_failreason = update_existing_scheme(pfdata, schmedata, screenid, con, cur, userid, entityid)
+                                status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                            elif schm_code == "":
+                                # New Scheme addition
+                                print("shcme addition")
+                                schm_code, resp_status,resp_failreason = add_new_scheme(pfdata, schmedata, screenid, entityid, userid, con, cur)
+                                status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                            else:
+                                print("schme else")
+                                pass
+                            print("after schme tasks : ", status, "ra: ", failreason)
+                            if status >= -1:
                                 resp = make_response(jsonify(failreason), 400)
                                 return(resp)
-                            
-                            #ADD or UPDATE order for the user's portfolio
-                            for orderdata in orderdatas:
+                            else:
+                                affected_schemeids.append(schm_code)
+                        else:
+                            resp = make_response(jsonify(failreason), 400)
+                            return(resp)
+                        print("to start with orderdata")
+
+                        for orderdata in orderdatas:
+                            print("looping through orderdatas")
+                            print(orderdata)
+                            #Validate BSEMF sell qty with order qty                         
+                            orderid = orderdata.get('orormfpflistid',None)
+                            print(orderid)
+                            if orderid:
+                                # Existing order update                                        
+                                resp_status,resp_failreason = update_existing_order(orderdata, screenid, entityid, con, cur)
+                                status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                            else:
+                                # New order addition
+                                orderid,resp_status,resp_failreason = add_new_order(pfdata, schmedata, orderdata, screenid, con, cur, userid, entityid, neworder_seqnum)
+                                status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                                print("back to main after orderinsert")
+                                print(status, failreason)
+
+                            if status >= -1:
+                                resp = make_response(jsonify(failreason), 400)
+                                return(resp)
+                            else:
+                                affected_orderids.append(orderid)
+
+            elif screenid == "ordBSEMFsell":
+                print(pfid)
+                if pfid == "NEW" or pfid == None:
+                    new_failreason = "porfolio id missing in submitted record"
+                    status, failreason = get_status(status, 0, failreason, new_failreason)              
+                    print(status,failreason)
+
+                if status < 0:
+                    #Update existing order under the scheme
+                    for schmedata in schmedatas:
+                        print("getting orderdata")
+                        print("schemdata : ",schmedata)
+                        orderdatas, resp_status, resp_failreason = get_after_validate_orderdata(schmedata,screenid)
+                        status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                        if status > -1:
+                            command = cur.mogrify("ROLLBACK;")
+                            cur, dbqerr = db.mydbfunc(con,cur,command)
+                            db.mydbcloseall(con, cur)
+                            resp = make_response(jsonify(failreason), 400)
+                            return(resp)
+                        print("getting orderdata complete")
+                        print(orderdatas)
+                        #ADD or UPDATE order for the user's portfolio
+                        
+                        for orderdata in orderdatas:
+                            print("looping through orderdatas")
+                            print(orderdata)
+                            if orderdata['orderselect'] == True:
                                 #Validate BSEMF sell qty with order qty
                                 if orderdata['ormffundordunit'] > (schmedata['dailyposition']['dpos_unit'] + schmedata['dailyposition']['dpos_unitblocked']):
-                                    resp_status,resp_failreason = update_existing_order(orderdata, prod_trantype)
-                                    status, failreason  = get_status(status, resp_status, failreason, resp_failreason)                            
+                                    status, failreason  = get_status(status, 0, failreason, "Ordered units are more than available units")                            
                                 orderid = orderdata.get('orormfpflistid',None)
+                                print(orderid)
                                 if status < -1:                          
                                     if orderid:
-                                        # Existing order update
-                                        resp_status,resp_failreason = update_existing_order(orderdata, prod_trantype)
+                                        # Existing order update                                        
+                                        resp_status,resp_failreason = update_existing_order(orderdata, screenid, entityid, con, cur)
                                         status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
                                     else:
                                         # New order addition
-                                        resp_status,resp_failreason = add_new_order(orderdata, prod_trantype)
+                                        orderid,resp_status,resp_failreason = add_new_order(pfdata, schmedata, orderdata, screenid, con, cur, userid, entityid, neworder_seqnum)
                                         status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+                                        print("back to main after orderinsert")
+                                        print(status, failreason)
 
                                 if status >= -1:
-                                    command = cur.mogrify("ROLLBACK;")
-                                    cur, dbqerr = db.mydbfunc(con,cur,command)
-                                    db.mydbcloseall(con, cur)
                                     resp = make_response(jsonify(failreason), 400)
                                     return(resp)
                                 else:
-                                    affected_orderid.append(orderid)
+                                    affected_orderids.append(orderid)
 
             elif screenid in incartscreens:
                 filterstr = "INCART"
@@ -2426,8 +2533,135 @@ def mfordersave1():
                 print(status,failreason)
             else:
                 filterstr = "INCART"
+            print(affected_orderids)
+            #Cleanup calls
+            affected_orderids = affected_orderids if len(affected_orderids) > 0 else None
+            resp_status,resp_failreason = cleanup_post_order_task(pfdata, screenid, con, cur, affected_orderids)
+            status, failreason  = get_status(status, resp_status, failreason, resp_failreason)
+            print("back to main after cleanup")
+            print(status, failreason)
+            #Cleanup calls end
+        
+        print("commit")
+        db.mydbcloseall(con, cur)
 
-            return 'ok'
+        return jsonify({'natstatus':'success','statusdetails':'Order details for ' + userid +' Saved/Updated'})
+
+
+def check_scheme_exists(pfdata, d, con, cur, userid, entityid):
+    status = -1
+    failreason = None
+    command = cur.mogrify("""
+        SELECT ormflistid FROM webapp.pfmflist WHERE ormffndcode = %s AND orpfuserid = %s AND orportfolioid = %s AND entityid =%s;
+        """,(d.get('ormffndcode'),userid,pfdata.get('pfportfolioid'),entityid,))
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+                        
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails']="Fund exists in PF check failed.  Contact support"
+            s, f = get_status(status, 1, dbqerr['statusdetails'], failreason)
+            return (None, s, f)
+
+    #Model to follow in all fetch
+    if cur.rowcount == 1:
+        for record in cur:  
+            d['ormflistid'] = record[0]                                
+
+    elif cur.rowcount == 0:
+        print("Fund doesn't exist in this users portfolio")
+        d['ormflistid'] = ""
+    else:
+        command = cur.mogrify("ROLLBACK;")
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        s, f = get_status(status, 0, failreason, "Same fund exists multiple times in the portfolio")
+        return (None, s, f)
+
+    print("is the fund already exists:")
+    print(d['ormflistid'])
+
+    if status < 0:
+        s, f = get_status(status, -3, failreason , "success")
+        return (d['ormflistid'], s, f)
+    else:
+        s, f = get_status(status, None, failreason , "failed")
+        return (None, s, f)
+
+def cleanup_post_order_task(pfdata, screenid, con, cur, affected_orderids = None):
+    print("insder post action cleanup")
+    print(affected_orderids)
+    status = -3
+    sql_str = None
+    failreason = "success"
+    command = None
+
+    if screenid == "ordBSEMFsell":
+        delstatu = "INCART"
+        whatstatus = "R"
+        prod = "BSEMF"
+    if screenid == "ordBSEMFbuy":
+        delstatu = "INCART"
+        whatstatus = "P"
+        prod = "BSEMF"
+    if screenid == "ordpf":
+        delstatu="NEW"
+        whatstatus = "%"
+        prod = "BSEMF"
+
+    #orderids Cleanup
+    sql_str = "DELETE FROM webapp.pfmforlist WHERE entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s AND ormffndstatus = %s AND orormfprodtype = %s"
+
+    if screenid == "ordpf":
+        sql_str = sql_str + " AND orormfwhattran LIKE %s"
+    else:
+        sql_str = sql_str + " AND orormfwhattran IN (%s)"
+    
+    if affected_orderids:
+        if len(affected_orderids):
+            #Delete only the order data that are deleted in front end
+            sql_str = sql_str + " AND orormfpflistid NOT IN %s"
+            print(sql_str)
+            command = cur.mogrify(sql_str,(pfdata['entityid'],pfdata['pfuserid'],pfdata['pfportfolioid'],delstatu,prod,whatstatus,tuple(affected_orderids),))
+    else:
+        print(sql_str)
+        print("sle")
+        # Delete all the order data as all the order deleted in front end
+        command = cur.mogrify(sql_str,(pfdata['entityid'],pfdata['pfuserid'],pfdata['pfportfolioid'],delstatu,prod,whatstatus,))
+
+    print(command)       
+    if command:
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error"):
+                dbqerr['statusdetails']="Couldn't cleanup order post save.  Contact support"
+                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+
+    #scheme Cleanup
+    # Delete all the schemes where you don't have any orders (irrespective of their status)
+    sql_str = ""
+    sql_str = sql_str + " "
+    
+    command = cur.mogrify("""
+                            DELETE FROM webapp.pfmflist WHERE entityid =%s AND orpfuserid = %s AND orportfolioid = %s  AND ormfprodtype = %s
+                            AND ormflistid NOT IN (SELECT DISTINCT orormflistid FROM webapp.pfmforlist WHERE entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s AND orormfprodtype = %s)
+            """,(pfdata['entityid'],pfdata['pfuserid'],pfdata['pfportfolioid'],prod,pfdata['entityid'],pfdata['pfuserid'],pfdata['pfportfolioid'],prod,))
+
+    print(command)       
+    if command:
+        print(command)
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+        
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error"):
+                dbqerr['statusdetails']="Couldn't cleanup order post save.  Contact support"
+                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+
+    if status < 0:
+        return (get_status(status, -3, failreason , "success"))
+    else:
+        return (get_status(status, None, failreason , "success"))
 
 def get_after_validate_schemedata(pfdata, prod_type):
     status = -3
@@ -2437,7 +2671,7 @@ def get_after_validate_schemedata(pfdata, prod_type):
     if prod_type == "ordBSEMFbuy" or prod_type == "ordBSEMFsell":
         if 'pfmflist' in pfdata:
             schmedatas = pfdata.pop("pfmflist")
-            print("schmedatas")
+            print("schmedatas ordBSEMF")
             print(schmedatas)
         else:
             schmedatas = None
@@ -2454,15 +2688,17 @@ def get_after_validate_schemedata(pfdata, prod_type):
         failreason = "scheme data key missin in the submitted record"
         status = 0
         print(status,failreason)
-        
+    print("returning schemedatas")
     return schmedatas, status, failreason
 
 def get_after_validate_orderdata(schemedata, screenid):
     orderdata = None
-    if screenid == "BSEMFbuy" or screenid == "BSEMFsell":
+    status = -3
+    failreason = "success"
+    if screenid == "ordBSEMFbuy" or screenid == "ordBSEMFsell":
         if 'ormffundorderlists' in schemedata:
             orderdata = schemedata.pop("ormffundorderlists")
-            print("orderdata")
+            print("Insider orderdata get")
             print(orderdata)
         else:
             orderdata = None
@@ -2476,7 +2712,7 @@ def get_after_validate_orderdata(schemedata, screenid):
             orderdata = None
     
     if orderdata == None:
-        failreason = "scheme data key missin in the submitted record"
+        failreason = "order data key missin in the submitted record"
         status = 0
         print(status,failreason)
 
@@ -2516,6 +2752,8 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
             else:
                 pfmainnextmaxval = record[0] + 1
     else:
+        command = cur.mogrify("ROLLBACK;")
+        cur, dbqerr = db.mydbfunc(con,cur,command)
         return (get_status(status, 0, "Max Number fetch returned mutiple rows" , failreason))
 
     pfdata['pfpfidusrrunno'] = str(pfmainnextmaxval)
@@ -2529,7 +2767,7 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
     pfdatajsondict = json.dumps(pfdata)
 
     command = cur.mogrify("INSERT INTO webapp.pfmaindetail select * from json_populate_record(NULL::webapp.pfmaindetail,%s);",(str(pfdatajsondict),))
-
+    print(command)
     cur, dbqerr = db.mydbfunc(con,cur,command)
     if cur.closed == True:
         if(dbqerr['natstatus'] == "error"):
@@ -2544,56 +2782,209 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
 def update_existing_pf():
     return 'ok'
 
-def add_new_scheme(schmedata, prod_trantype): 
+def add_new_scheme(pfdata, d, prod_trantype, entityid, userid, con, cur): 
     #taking tran type here to accomodate short sell ie...selling a scheme before buying (going short)
-    return 'ok'
+    #New Scheme getting added to the PF
+    print("PRINTING add new scheme")
+    print(d)
+    status = -1
+    failreason = None   
+    pfid = pfdata.get('pfportfolioid')
+    newschmem_seqnum = get_new_seq("BSEMFscheme",entityid, userid, pfid, None, con, cur)
+    pfsavetimestamp= datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+    d['ormfoctime'] = pfsavetimestamp
+    d['ormflmtime'] = pfsavetimestamp
+    d['ormflistid'] = 'mf'+ pfid + str(newschmem_seqnum)
+    d['orportfolioid'] = pfid
+    d['entityid'] = entityid
+    d['ormfseqnum'] = str(newschmem_seqnum)
+    d['orpfuserid'] = userid
+    # pfmflsdatalist.apend(d['ormflistid'])
 
-def update_existing_scheme(schmedata, prod_trantype):
-    return 'ok'
+    pfmflsdatajsondict = json.dumps(d)
+    command = cur.mogrify("INSERT INTO webapp.pfmflist select * from json_populate_record(NULL::webapp.pfmflist,%s) where entityid = %s;",(str(pfmflsdatajsondict),entityid,))
+    print(command)                
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails']="Couldn't save schemedata (new order insert  Failed).  Contact support"
+            print(status, 1, dbqerr['statusdetails'], failreason)
+            s, f = get_status(status, 1, failreason, dbqerr['statusdetails'])
+            return (None, s, f)
+    print("new scheme insert complete")
 
+    if status < 0:
+        s, f = get_status(status, -3, failreason , "success")
+        return (d['ormflistid'],s,f )
+    else:
+        s, f = get_status(status, None, failreason , "failure")
+        return (None, s, f)
+
+def update_existing_scheme(pfdata, d, prod_trantype, con, cur, userid, entityid):
+    status = -1
+    failreason = None
+    d['entityid']=entityid
+    d['orpfuserid']=pfdata.get('pfuserid')
+
+    schemedata_json = json.dumps(d)
+    #command = cur.mogrify("UPDATE webapp.pfmflist select * from json_populate_record(NULL::webapp.pfmflist,%s) WHERE ormflistid =%s AND entityid = %s;",(str(pfmflsdatajsondict),d.get('ormflistid'),entityid,))
+    
+    #donot update if the fund is fixed : START
+    if(d['ormffndnameedit'] != 'fixed'):
+        command = cur.mogrify("""
+                    UPDATE webapp.pfmflist set(ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime) = 
+                    (select ormffundname,ormffndcode,ormffndnameedit,ormfdathold,ormflmtime from json_to_record (%s)
+                    AS (ormffundname varchar(100),ormffndcode varchar(100),ormffndnameedit varchar(100),ormfdathold text,ormflmtime timestamp))
+                    WHERE ormflistid =%s AND entityid = %s;
+                """,(str(schemedata_json),d.get('ormflistid'),entityid,))                       
+        print(command)                
+        cur, dbqerr = db.mydbfunc(con,cur,command)
+
+        if cur.closed == True:
+            if(dbqerr['natstatus'] == "error"):
+                dbqerr['statusdetails']="Couldn't update scheme.  Contact support"
+                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+    
+    #donot update if the fund is fixed : END
+    
+    if status < 0:
+        return (get_status(status, -3, failreason , "success"))
+    else:
+        return (get_status(status, None, failreason , "failed"))
+    
 #add_new_order(pfdata,schemedata,orderdata,screenid)
-def add_new_order(p, d, e, prod_trantype ):
+def add_new_order(p, d, e, prod_trantype, con, cur, userid, entityid, neworder_seqnum):
     print("PRINTING add new order")
     print(e)
+    status = -1
+    failreason = None    
+    print(p,d,e)
+    print("check check check")
+    pfsavetimestamp= datetime.now().strftime('%Y/%m/%d %H:%M:%S')
     e['orormflistid']= d.get('ormflistid',None)                 
     e['ormfoctime']= pfsavetimestamp
-    e['ormflmtime']= pfsavetimestamp
-    e['orormfpflistid']= "or" + d.get('ormflistid',None) + str(pfmforlsseqnum)
-    e['ororportfolioid']=d.get('orportfolioid')
-    e['orpfportfolioname']=pfdata.get('pfportfolioname')
-    e['ororpfuserid']=d.get('orpfuserid')
+    e['ormflmtime']= pfsavetimestamp    
+    e['ororportfolioid'] = p.get('pfportfolioid')
+    e['orpfportfolioname']= p.get('pfportfolioname')
+    e['ororpfuserid'] = userid
     e['orormffundname']=d.get('ormffundname')
     e['orormffndcode']=d.get('ormffndcode')
     e['ororfndamcnatcode']=d.get('ormfnatamccode')
-    e['entityid']=entityid
-    e['orormfseqnum']=pfmforlsseqnum                                
-    pfmforlsseqnum = pfmforlsseqnum+1
-    pfmflsordatajsondict = json.dumps(e)
+    e['entityid'] = entityid   
+    neworder_seqnum = get_new_seq("BSEMForder", entityid, userid, e['ororportfolioid'], e['orormflistid'], con, cur)
+    e['orormfpflistid']= "or" + d.get('ormflistid',None) + str(neworder_seqnum)
+    e['orormfseqnum'] = neworder_seqnum
+    print(e)
+    orderdata_json = json.dumps(e)
     print(e['ormffundordelsstdt'])
 
     if(e.get('ormffundordelsstdt')==0):
-        if (e['ormffundordelstrtyp']=='One Time'):
-            print("inside onetime no action")
-        else:
-            dbqerr={}
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="SIP START DATE is Mandatory"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
+        if (e['ormffundordelstrtyp'] == "SIP"):
+            s, f = get_status(status, 0, failreason , "SIP START DATE is Mandatory")
+            return (None, s, f)
 
-    command = cur.mogrify("INSERT INTO webapp.pfmforlist select * from json_populate_record(NULL::webapp.pfmforlist,%s);",(str(pfmflsordatajsondict),))
-
+    command = cur.mogrify("INSERT INTO webapp.pfmforlist select * from json_populate_record(NULL::webapp.pfmforlist,%s);",(str(orderdata_json),))
+    print(command)
     cur, dbqerr = db.mydbfunc(con,cur,command)
     if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails']="Couldn't save orderdata (order insert  Failed).  Contact support"
+            print(status, 1, dbqerr['statusdetails'], failreason)
+            s, f = get_status(status, 1, failreason, dbqerr['statusdetails'])
+            return (None, s, f)
+    print("new order insert complete")
+    print(status, 1, dbqerr['statusdetails'], failreason)
+    print(e['orormfpflistid'], get_status(status, -3, failreason , "success"))
+    if status < 0:
+        s, f = get_status(status, -3, failreason , "success")
+        return (e['orormfpflistid'],s,f )
+    else:
+        s, f = get_status(status, None, failreason , "failure")
+        return (None, s, f)
+
+
+
+def get_new_seq(reqseqfor,entityid, userid, pfid, schmid, con, cur):
+
+    if reqseqfor == "BSEMForder":
+        command = cur.mogrify("""
+                SELECT MAX(orormfseqnum) FROM webapp.pfmforlist 
+                WHERE entityid =%s AND ororpfuserid = %s AND ororportfolioid = %s AND orormflistid = %s;
+                """,(entityid,userid,pfid,schmid,))
+    elif reqseqfor == "BSEMFscheme":
+        command = cur.mogrify("""
+                        SELECT MAX(ormfseqnum) FROM webapp.pfmflist where orportfolioid = %s AND orpfuserid = %s AND entityid =%s;
+                    """,(pfid ,userid, entityid,))
+
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+                        
+    if cur.closed == True:
         if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-            dbqerr['statusdetails']="mflist details insert Failed"
+            dbqerr['statusdetails']="Fund MAX sequence fetch failed"
         resp = make_response(jsonify(dbqerr), 400)
         return(resp)
-        
-    return 'ok'
 
-def update_existing_order(orderdata, prod_trantype):
-    return 'ok'
+    #Model to follow in all fetch
+    records=[]
+    for record in cur:  
+        records.append(record[0])
+    print("iam printing records to see")
+    print(records)
+    
+    if(records[0] == None):
+        newseq = 1
+    else:
+        if(type(records[0])=="Decimal"):
+            newseq = int(Decimal(records[0]))+1                                
+        else:
+            newseq = records[0]+1
+    print(int(newseq))
+    return int(newseq)
+
+def update_existing_order(orderdata, prod_trantype, entityid, con, cur):
+    status = -1
+    failreason = None
+    if prod_trantype == "ordBSEMFsell":
+        command = cur.mogrify("""
+            UPDATE webapp.pfmforlist SET ormffundordunit = %s 
+            WHERE orormfpflistid = %s AND orormflistid = %s AND ororportfolioid = %s AND ororpfuserid = %s AND entityid = %s
+        """,(orderdata['ormffundordunit'],orderdata['orormfpflistid'],orderdata['orormflistid'],orderdata['ororportfolioid'],orderdata['ororpfuserid'],orderdata['entityid'],))
+
+    elif prod_trantype == "ordBSEMFbuy":
+        pfmflsordatajsondict = json.dumps(orderdata)           
+        #Record which are only editable to be updated.
+        if(orderdata['ormffndstatus'] == 'New'):   
+            command = cur.mogrify("""
+                        UPDATE webapp.pfmforlist set(orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime) = 
+                        (select orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime from json_to_record (%s)
+                        AS (orormffundname varchar(100),orormffndcode varchar(100),ormffundordelsfreq varchar(20),ormffundordelsstdt varchar(11),ormffundordelsamt numeric(16,5),ormfsipinstal numeric(3),ormfsipendt date,ormfsipdthold text,ormfselctedsip text,ormffndstatus varchar(10),ormflmtime timestamp))
+                        WHERE orormfpflistid = %s AND entityid = %s;
+                    """,(str(pfmflsordatajsondict),orderdata.get('orormfpflistid'),entityid,))
+
+        elif(orderdata['ormffndstatus']=='INCART'):   
+            command = cur.mogrify("""
+                        UPDATE webapp.pfmforlist set(orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime) = 
+                        (select orormffundname,orormffndcode,ormffundordelsfreq,ormffundordelsstdt,ormffundordelsamt,ormfsipinstal,ormfsipendt,ormfsipdthold,ormfselctedsip,ormffndstatus,ormflmtime from json_to_record (%s)
+                        AS (orormffundname varchar(100),orormffndcode varchar(100),ormffundordelsfreq varchar(20),ormffundordelsstdt varchar(11),ormffundordelsamt numeric(16,5),ormfsipinstal numeric(3),ormfsipendt date,ormfsipdthold text,ormfselctedsip text,ormffndstatus varchar(10),ormflmtime timestamp))
+                        WHERE orormfpflistid = %s AND entityid = %s;
+                    """,(str(pfmflsordatajsondict),orderdata.get('orormfpflistid'),entityid,))
+        else:
+            pass
+
+    print(command)
+    cur, dbqerr = db.mydbfunc(con,cur,command)
+    if cur.closed == True:
+        if(dbqerr['natstatus'] == "error"):
+            dbqerr['statusdetails']="Couldn't update orderdata.  Contact support"
+            print(status, 1, dbqerr['statusdetails'], failreason)
+            return (get_status(status, 1, failreason, dbqerr['statusdetails']))
+    print("order update complete")
+    print(status, 1, dbqerr['statusdetails'], failreason)
+    if status == status < 0:
+        return (get_status(status, -3, failreason , "success"))
+    else:
+        return (get_status(status, None, failreason , "failure"))
 
 def get_status(curstatus,newstatus,curreason, newreason):
     '''
@@ -2604,6 +2995,7 @@ def get_status(curstatus,newstatus,curreason, newreason):
                 1  --> db error
                 2  --> both data and db error
     '''
+    print(curstatus,newstatus,curreason, newreason)
     if curstatus == None:
         curstatus = -1
 
@@ -2627,4 +3019,4 @@ def get_status(curstatus,newstatus,curreason, newreason):
         else:
             setreason = newreason
 
-    return setstatus, setreason
+    return -1 if setstatus == None else setstatus, setreason
