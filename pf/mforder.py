@@ -975,11 +975,10 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
     #-------------------------------- ord_type ----------------------------------------------------------#
     
     if ord_type == 'ALL':
-        ord_type = tuple(['One Time','SIP'])
+        ord_type = tuple(["One Time","SIP","BSMFsell"])
     elif ord_type == 'One Time' or ord_type == "BSMFsell" or ord_type == "SIP":
         ord_type = tuple([ord_type])
-    elif ord_type == 'SIP':
-        ord_type = tuple(['SIP'])
+
     print("###################")
     print(ord_type)
     print("###################")
