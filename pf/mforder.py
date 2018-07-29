@@ -695,6 +695,12 @@ def mfordervalidate():
         sip_pay_details = payload_org['sip_pay']  #Not required for one time
         payload = payload_org['succrecs']
         
+        screenid = payload_org.get('screenid', None)
+        if screenid == "ordBSEMFbuy":
+            delstrtyp = 'One Time'
+        elif screenid == "ordBSEMFsell":
+            delstrtyp = 'BSMFsell'
+
         if sip_pay_details is None or sip_pay_details == '':
             sip_pay_details = {}
             sip_pay_details['mandate_id'] = ''
@@ -724,8 +730,8 @@ def mfordervalidate():
             LEFT OUTER JOIN webapp.uccclientmaster B ON (A.ororpfuserid = B.ucclguserid AND A.entityid = B.uccentityid) 
             LEFT OUTER JOIN webapp.userlogin C ON (A.ororpfuserid = C.lguserid AND A.entityid = C.lgentityid) 
             LEFT OUTER JOIN webapp.mffoliodetails D ON (A.ororfndamcnatcode = D.foamcnatcode AND A.entityid = D.foentityid) 
-            where ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'One Time';
-        """,(userid,entityid,))
+            where ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = %s;
+        """,(userid,entityid,delstrtyp,))
 
         print(command)
 
@@ -740,8 +746,8 @@ def mfordervalidate():
 
 
         command = cur.mogrify("""
-            UPDATE webapp.pfmforlist SET ormffndstatus = 'SUBM' WHERE ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'One Time'
-        """,(userid,entityid,))
+            UPDATE webapp.pfmforlist SET ormffndstatus = 'SUBM' WHERE ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = %s
+        """,(userid,entityid,delstrtyp,))
 
         print(command)
 
@@ -757,7 +763,7 @@ def mfordervalidate():
 
 
         #Fetch the ONE TIME RECORDS for getting orderid from BSE: START
-        command = cur.mogrify("select json_agg(b) from (SELECT * FROM webapp.mforderdetails WHERE mfor_ordertype = 'One Time' AND mfor_orderstatus='PNS' AND mfor_pfuserid = %s AND mfor_entityid =%s) as b;",(userid,entityid,))
+        command = cur.mogrify("select json_agg(b) from (SELECT * FROM webapp.mforderdetails WHERE mfor_ordertype = %s AND mfor_orderstatus='PNS' AND mfor_pfuserid = %s AND mfor_entityid =%s) as b;",(delstrtyp,userid,entityid,))
         print(command)
         cur, dbqerr = db.mydbfunc(con,cur,command)
                                 
@@ -810,72 +816,74 @@ def mfordervalidate():
 
         print("ontime orders processing in progress in other processes.  SIP started in main thread")
         #Fetch the ONE TIME RECORDS for getting orderid from BSE: END
-        #select SIP records and enter in order processing table
-        print("started with SIP")
-        command = cur.mogrify("BEGIN;")
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="DB query failed, BEGIN failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-
-        command = cur.mogrify("""
-            INSERT INTO webapp.mforderdetails(mfor_producttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,
-            mfor_amount,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,mfor_sipstartdate,mfor_freqencytype,mfor_numofinstallment,mfor_foliono,
-            mfor_orderoctime,mfor_orderlmtime,mfor_entityid,mfor_sipmandateid,mfor_sipmandatetype) 
-            SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS','P','P',ororpfuserid,B.clientcode,orormffndcode,
-            ormffundordelsamt,C.lguserkycstatus,'','N','N',C.lguseripaddress,ormffundordelsstdt,ormffundordelsfreq,ormfsipinstal,D.fopfamcfolionumber,
-            CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid,%s,%s from webapp.pfmforlist A 
-            LEFT OUTER JOIN webapp.uccclientmaster B ON (A.ororpfuserid = B.ucclguserid AND A.entityid = B.uccentityid) 
-            LEFT OUTER JOIN webapp.userlogin C ON (A.ororpfuserid = C.lguserid AND A.entityid = C.lgentityid) 
-            LEFT OUTER JOIN webapp.mffoliodetails D ON (A.ororfndamcnatcode = D.foamcnatcode AND A.entityid = D.foentityid) 
-            where ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
-        """,(sip_pay_details['mandate_id'],sip_pay_details['mandate_type'],userid,entityid,))
-                            
         
-        print(command)
+        if screenid == "ordBSEMFbuy":
+            #select SIP records and enter in order processing table
+            print("started with SIP")
+            command = cur.mogrify("BEGIN;")
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="DB query failed, BEGIN failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
 
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                            
+            command = cur.mogrify("""
+                INSERT INTO webapp.mforderdetails(mfor_producttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,
+                mfor_amount,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,mfor_sipstartdate,mfor_freqencytype,mfor_numofinstallment,mfor_foliono,
+                mfor_orderoctime,mfor_orderlmtime,mfor_entityid,mfor_sipmandateid,mfor_sipmandatetype) 
+                SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS','P','P',ororpfuserid,B.clientcode,orormffndcode,
+                ormffundordelsamt,C.lguserkycstatus,'','N','N',C.lguseripaddress,ormffundordelsstdt,ormffundordelsfreq,ormfsipinstal,D.fopfamcfolionumber,
+                CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid,%s,%s from webapp.pfmforlist A 
+                LEFT OUTER JOIN webapp.uccclientmaster B ON (A.ororpfuserid = B.ucclguserid AND A.entityid = B.uccentityid) 
+                LEFT OUTER JOIN webapp.userlogin C ON (A.ororpfuserid = C.lguserid AND A.entityid = C.lgentityid) 
+                LEFT OUTER JOIN webapp.mffoliodetails D ON (A.ororfndamcnatcode = D.foamcnatcode AND A.entityid = D.foentityid) 
+                where ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
+            """,(sip_pay_details['mandate_id'],sip_pay_details['mandate_type'],userid,entityid,))
+                                
+            
+            print(command)
 
-        command = cur.mogrify("""
-            UPDATE webapp.pfmforlist SET ormffndstatus = 'SUBM' WHERE ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
-        """,(userid,entityid,))
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
 
-        print(command)
+            command = cur.mogrify("""
+                UPDATE webapp.pfmforlist SET ormffndstatus = 'SUBM' WHERE ororpfuserid = %s AND entityid = %s AND ormffndstatus = 'INCART' AND ormffundordelstrtyp = 'SIP'
+            """,(userid,entityid,))
 
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-                            
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="Fund MAX sequence failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        
-        con.commit()
+            print(command)
 
-        #Call lambda to process SIP : START
-        #   Don't wait from lambda response here
-        #   YET TO IMPLEMENT
-        #       fetch eligible SIP records
-        #       call prepare order to do validation and prepare json
-        #       send only sucess records to bse and store the responses
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+                                
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="Fund MAX sequence failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            
+            con.commit()
+
+            #Call lambda to process SIP : START
+            #   Don't wait from lambda response here
+            #   YET TO IMPLEMENT
+            #       fetch eligible SIP records
+            #       call prepare order to do validation and prepare json
+            #       send only sucess records to bse and store the responses
 
 
-        #Fetch the SIP RECORDS for getting orderid from BSE: START
+            #Fetch the SIP RECORDS for getting orderid from BSE: START
 
-        ###  this should be a API call in lambda  #####
-        sip_data_for_processing = {
-            'userid' : userid,
-            'entityid' : entityid,
-            'sip_mandate_details': sip_pay_details
-        }
-        sip_status = mfsiporder.sip_order_processing(sip_data_for_processing)
-        ###  this should be a API call in lambda  #####
-        
-        print(sip_status)
-        print("end with SIP")
+            ###  this should be a API call in lambda  #####
+            sip_data_for_processing = {
+                'userid' : userid,
+                'entityid' : entityid,
+                'sip_mandate_details': sip_pay_details
+            }
+            sip_status = mfsiporder.sip_order_processing(sip_data_for_processing)
+            ###  this should be a API call in lambda  #####
+            
+            print(sip_status)
+            print("end with SIP")
 
         #Call lambda to process SIP : END
         if has_ontime_record:
@@ -892,7 +900,12 @@ def mfordervalidate():
             frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')            
             
             # No date is sent as orderids are sent in this call
-            all_recs = fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid,frmdt,todt,'VSF')
+            if screenid == "ordBSEMFbuy":
+                mfor_ordertype = "One Time"
+            if screenid == "ordBSEMFsell":
+                mfor_ordertype = "BSMFsell"
+
+            all_recs = fetchsucfai_recs(con, cur, str2, mfor_ordertype, userid, entityid,frmdt,todt,'VSF')
             resp_recs = all_recs
             #resp_recs = all_recs['one_time']
             resp_recs['has_ontime_rec'] = True
@@ -948,6 +961,7 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
     #  VAF - (O&S) - Failed records only ie..mfor_orderstatus = 'VAF' (fai_records)
     #  VSF - (O&S) - Sucess and Failed records only ie..mfor_orderstatus = 'VAS' & 'VAF' (suc_records & fai_records)
     #  FAI - (O&S) - BSE Failed records only ie..mfor_orderstatus = 'FAI' (bse_fai_records)
+    #  SBE - (O)   - Redemption records successfully submitted to BSE
     #  PPY - (O&S) - Pending payme records only ie..mfor_orderstatus = 'PPY'  (pen_pay_records) [for sip this is SIP registration progress record]
     #  BFP - (O&S) - BSE Failed and Pending payme records ie..mfor_orderstatus = 'VAF' & 'FAI' & 'PPY' (fai_records, bse_fai_records & pen_pay_records) [for sip this is SIP registration completed record]
     #  SAS - (S)   - SIP allotment success transaction (equivalent to onetime buy)
@@ -962,11 +976,13 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
     
     if ord_type == 'ALL':
         ord_type = tuple(['One Time','SIP'])
-    elif ord_type == 'One Time':
-        ord_type = tuple(['One Time'])
+    elif ord_type == 'One Time' or ord_type == "BSMFsell" or ord_type == "SIP":
+        ord_type = tuple([ord_type])
     elif ord_type == 'SIP':
         ord_type = tuple(['SIP'])
-
+    print("###################")
+    print(ord_type)
+    print("###################")
     todaysdate = datetime.now().strftime('%d-%b-%Y')
     yestdate = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
 
@@ -1049,8 +1065,10 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
         if pay_init_records == None or pay_init_records == '':
            pay_init_records = []
 
-
-        if ordtyp == 'One Time':
+        print("before final")
+        print(ord_type)
+        print(ord_type == "BSMFSELL")
+        if "One Time" in ord_type or "BSMFsell" in ord_type:
             print("inside one time")
             print(suc_records)
             print(fai_records)
@@ -1061,11 +1079,12 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
                 'val_success_recs': suc_records,
                 'failure_recs': fai_records,
                 'bse_failure_recs': bse_fai_records,
+                'bse_submitted_recs' : '',
                 'paypending_recs': pen_pay_records,
                 'pay_initiated_recs': pay_init_records
             }
             sip_recs =''
-        elif ordtyp == 'SIP':
+        elif 'SIP' in ordtyp:
             ot_recs = ''
             sip_recs={
                 'success_recs': suc_records,
@@ -1127,6 +1146,7 @@ def one_fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromd
     
     return records
 
+#This is when orders are sent to BSE
 @app.route('/mfordersubmit',methods=['GET','POST','OPTIONS'])
 #example for model code http://www.postgresqltutorial.com/postgresql-python/transaction/
 def mfordersubmit():
@@ -1447,7 +1467,7 @@ def prepare_order(orderrecord):
     #time.sleep(0.5)
     #return json.dumps({'mfor_uniquereferencenumber': ord['mfor_uniquereferencenumber'],'order_id': '','amount':ord['mfor_amount']})
     
-    if(ord['mfor_ordertype'] == 'One Time'):
+    if(ord['mfor_ordertype'] == "One Time" or ord['mfor_ordertype'] == "BSMFsell"):
         has_error, order_json = prepare_onetime_ord(ord)
         print("back from order prep")
         print(has_error)
@@ -1554,7 +1574,6 @@ def prepare_onetime_ord(ord):
     haserror = False
     #Create error messages for the fieds which are NOT NULL IN DB but mandatory in the message
     errormsg = ''
-
     # Fill all fields for a FRESH PURCHASE
     # Change fields if its a redeem or addl purchase
     data_dict = {
@@ -1566,7 +1585,7 @@ def prepare_onetime_ord(ord):
         'dpc_flg' : 'N',
         'param2' : '',
         'param3' : '',
-        'mfor_ordertype': 'OneTime'
+        'mfor_ordertype': "OneTime" if ord['mfor_ordertype'] == "One Time" else ord['mfor_ordertype']
     }
     
     
@@ -1612,6 +1631,7 @@ def prepare_onetime_ord(ord):
         errormsg = errormsg + "Missing KYC status: " 
 
     print(ord['mfor_buysell'])
+    con1, cur1 = db.mydbopncon()
 
     if (ord['mfor_buysell'] == 'P'):        
         # PURCHASE transaction        
@@ -1641,42 +1661,143 @@ def prepare_onetime_ord(ord):
         
 
     elif (ord['mfor_buysell'] == 'R'):
-        # REDEEM transaction
-        ## set folio_no by looking at previous transactions
-        '''
-        trans_l = get_previous_trans(transaction)
-
-        ### assumption: pick the first relevant transaction's folio number if there are multiple transactions 
-        # data_dict['folio_no'] = '123456789012345'
-        data_dict['folio_no'] = trans_l[0].folio_number
-
-        if (transaction.transaction_type == 'A'):
-            # ADDITIONAL PURCHASE order
-            data_dict['buy_sell_type'] = 'ADDITIONAL'
-            data_dict['order_val'] = int(transaction.amount)
+        # REDEEM transaction    
+        data_dict['buy_sell'] = 'R'
+        data_dict['order_id'] = ''
+        data_dict['order_amt'] = 0
         
-        elif (transaction.transaction_type == 'R'):
-            # REDEEM order
-            data_dict['buy_sell'] = 'R'
+        if(ord['mfor_qty']):
+            if (ord['mfor_qty'] <= 0 ):
+                haserror = True
+                errormsg = errormsg + "Redemption qty is zero or negative: " 
+            else:
+                
+                if haserror:
+                    pass
+                else:
+                    haserror, errormsg = validate_add_details_to_order("order_qty", ord, con1, cur1)
+                    if haserror:
+                        pass
+                    else:
+                        data_dict['order_qty'] = ord['mfor_qty']
+                        data_dict['all_redeem'] = ord['mfor_allredeem']
+                        data_dict['min_redeem'] = ord['mfor_minredemption']
+        else:
+            haserror = True
+            errormsg = errormsg + "Missing ORDER Quantity: " 
+        
+        haserror, errormsg = haserror, errormsg if haserror else validate_add_details_to_order("foliono", ord, con1, cur1)
+        if haserror:
+            errormsg = errormsg + "error in locating foliono: " 
+        else:
+            data_dict['folio_no'] = ord['mfor_foliono']
 
-            ## set all_redeem flag in case entire investment is being redeemed, else 
-            if (transaction.all_redeem):
-                data_dict['all_redeem'] = 'Y'
-                data_dict['order_val'] = ''
-            elif (transaction.all_redeem == None):
-                raise Exception(
-                    "Internal error 634: all_redeem field of internal transaction table is not set for a redeem transaction"
-        '''
-        pass
+        data_dict['remarks'] = ''
+
+        haserror, errormsg = haserror, errormsg if haserror else validate_add_details_to_order("fresh_addi", ord, con1, cur1)
+        if haserror:
+            errormsg = errormsg + "error in ariving fresh or additional purchase: " 
+        else:
+            data_dict['buy_sell_type'] = ord['mfor_buyselltype']
+
     print('####################')
     print(data_dict)
     print('####################')
     print(haserror)
+    if cur1.closed == False:
+        db.mydbcloseall(con1,cur1)
 
     if haserror:
         return (True , errormsg)
     else:
         return( False, json.dumps(data_dict))
+
+# Function to validate redemption order quantiy against holding quantity
+def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
+    #Validate order qty
+    haserror = False
+    errormsg = None
+    buy_sell = ord['mfor_buysell']
+    entity = ord['mfor_entityid']
+    usrid = ord['mfor_pfuserid']
+    pfid = ord['mfor_ororportfolioid']
+    prodtyp = ord['mfor_producttype']
+    schmcd = ord['mfor_schemecd']
+
+    command = cur1.mogrify("""
+        SELECT row_to_json(a) from (
+        select COALESCE(dp.dpos_unit - (dp.dpos_unit_blocked + dp.dpos_unit_utilised),0) available_unit,COALESCE(fndminredamt,0) fndminredamt,
+        COALESCE(fndmulredamt,0) fndmulredamt, COALESCE(fo.fopfamcfolionumber,'') foliono,
+        CASE 
+            WHEN 
+                ((SELECT COUNT(1) WHERE dpos_entityid = %s AND dpos_pfuserid = %s  AND dpos_pfportfolioid = %s AND dpos_producttype = %s AND dpos_schemecd = %s) > 0) 
+                    THEN 'ADDITIONAL' 
+                    ELSE 'FRESH'            
+        END AS buyselltyp,
+        from webapp.dailyposition dp
+        LEFT JOIN webapp.fundmaster fm ON fm.fndschcdfrmbse = dp.dpos_schemecd AND fm.entityid = dp.dpos_entityid
+        LEFT JOIN webapp.mffoliodetails fo ON fo.foentityid = dp.dpos_entityid AND fo.fopfportfolioid = dp.dpos_pfportfolioid AND fo.foamcnatcode = fm.fndamcnatcode
+        WHERE dpos_entityid = %s AND dpos_pfuserid = %s  AND dpos_pfportfolioid = %s AND dpos_producttype = %s AND dpos_schemecd = %s) as a
+    """,(entity,usrid,pfid,prodtyp,schmcd,entity,usrid,pfid,prodtyp,schmcd,))
+
+    cur1, dbqerr = db.mydbfunc(con1,cur1,command)
+
+    if cur1.closed == True:
+        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+            haserror = True
+            errormsg = "order data fetch failed with DB error"
+            print(haserror,errormsg)
+
+    if cur1.rowcount > 1:
+        haserror = True
+        errormsg = "order data fetch returned more rows"
+        print(haserror,errormsg)
+
+    if cur1.rowcount == 1:
+        record = cur1.fetchall()[0][0]
+        print("print success records")
+        print(record)
+
+    if haserror:
+        pass
+    else:
+        if fld_to_val == "order_qty":        
+            if buy_sell == "R":
+                if record['available_unit'] <= ord['mfor_qty']:
+                    haserror = True
+                    ms = "Order quantity is more than avaialble quantity"
+                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+
+                if (ord['mfor_qty'] % record['fndmulredamt'] > 0):
+                    haserror = True
+                    ms = "redumption qty not in allowed multiples (" +  record['fndmulredamt'] + ")"
+                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+                
+                if (ord['mfor_qty'] < record['fndminredamt'] > 0):
+                    haserror = True
+                    ms = "redumption qty is less than min redemption allowed (orderqty: " + ord['mfor_qty'] + ", min redemption allowed: " + record['fndminredamt'] + ")"
+                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+
+                if haserror:
+                    pass
+                else:
+                    # Dont change ord['mfor_qty'] it is validated and perfect
+                    ord['mfor_allredeem'] = "Y" if record['available_unit'] == ord['mfor_qty'] else "N"
+                    ord['mfor_minredemption'] = "Y" if record['fndminredamt'] == ord['mfor_qty'] else "N"
+
+        if fld_to_val == "foliono":
+            if buy_sell == "R":
+                # incase this portfolio has more foliono for the same fund the order to be split
+                # future work
+                ord['mfor_foliono'] = record['foliono'] if ord['mfor_foliono'] == '' or ord['mfor_foliono'] == None else ord['mfor_foliono']
+        
+        if fld_to_val == "fresh_addi":
+            ord['mfor_buyselltype'] = record['buyselltyp']
+
+        
+    # command 
+    # return values: rqty, rall, rmin,  err, failreason
+    return haserror, errormsg
 
 # function to VALIDATE and CREATE data for ISIP order
 def prepare_isip_ord(ord):
@@ -2560,7 +2681,7 @@ def check_scheme_exists(pfdata, d, con, cur, userid, entityid):
     if cur.closed == True:
         if(dbqerr['natstatus'] == "error"):
             dbqerr['statusdetails']="Fund exists in PF check failed.  Contact support"
-            s, f = get_status(status, 1, dbqerr['statusdetails'], failreason)
+            s, f = get_status(status, 1, failreason, dbqerr['statusdetails'])
             return (None, s, f)
 
     #Model to follow in all fetch
@@ -2636,7 +2757,7 @@ def cleanup_post_order_task(pfdata, screenid, con, cur, affected_orderids = None
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error"):
                 dbqerr['statusdetails']="Couldn't cleanup order post save.  Contact support"
-                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+                return (get_status(status, 1, failreason, dbqerr['statusdetails']))
 
     #scheme Cleanup
     # Delete all the schemes where you don't have any orders (irrespective of their status)
@@ -2656,7 +2777,7 @@ def cleanup_post_order_task(pfdata, screenid, con, cur, affected_orderids = None
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error"):
                 dbqerr['statusdetails']="Couldn't cleanup order post save.  Contact support"
-                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+                return (get_status(status, 1, failreason, dbqerr['statusdetails']))
 
     if status < 0:
         return (get_status(status, -3, failreason , "success"))
@@ -2734,7 +2855,7 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
     if cur.closed == True:
         if(dbqerr['natstatus'] == "error"):
             dbqerr['statusdetails'] = "Max Number identification Failed"
-            return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+            return (get_status(status, 1, failreason, dbqerr['statusdetails']))
     
     record = None
     if cur.rowcount == 1:
@@ -2754,7 +2875,7 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
     else:
         command = cur.mogrify("ROLLBACK;")
         cur, dbqerr = db.mydbfunc(con,cur,command)
-        return (get_status(status, 0, "Max Number fetch returned mutiple rows" , failreason))
+        return (get_status(status, 0, failreason, "Max Number fetch returned mutiple rows"))
 
     pfdata['pfpfidusrrunno'] = str(pfmainnextmaxval)
     pfdata['pfportfolioid'] = useridstr + str(pfmainnextmaxval)
@@ -2772,7 +2893,7 @@ def add_new_pf(pfdata, con, cur, userid, entityid):
     if cur.closed == True:
         if(dbqerr['natstatus'] == "error"):
             dbqerr['statusdetails']="Couldn't save Porfolio (main insert  Failed).  Contact support"
-            return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+            return (get_status(status, 1, failreason, dbqerr['statusdetails']))
 
     if status < 0:
         return (get_status(status, -3, failreason , "success"))
@@ -2825,7 +2946,7 @@ def update_existing_scheme(pfdata, d, prod_trantype, con, cur, userid, entityid)
     failreason = None
     d['entityid']=entityid
     d['orpfuserid']=pfdata.get('pfuserid')
-
+    d['ormflmtime'] = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
     schemedata_json = json.dumps(d)
     #command = cur.mogrify("UPDATE webapp.pfmflist select * from json_populate_record(NULL::webapp.pfmflist,%s) WHERE ormflistid =%s AND entityid = %s;",(str(pfmflsdatajsondict),d.get('ormflistid'),entityid,))
     
@@ -2843,7 +2964,7 @@ def update_existing_scheme(pfdata, d, prod_trantype, con, cur, userid, entityid)
         if cur.closed == True:
             if(dbqerr['natstatus'] == "error"):
                 dbqerr['statusdetails']="Couldn't update scheme.  Contact support"
-                return (get_status(status, 1, dbqerr['statusdetails'], failreason))
+                return (get_status(status, 1, failreason, dbqerr['statusdetails']))
     
     #donot update if the fund is fixed : END
     
