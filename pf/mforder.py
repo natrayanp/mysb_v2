@@ -722,11 +722,11 @@ def mfordervalidate():
         
         command = cur.mogrify("""
             INSERT INTO webapp.mforderdetails (mfor_producttype,mfor_orormfpflistid,mfor_ororportfolioid,mfor_transactioncode,mfor_ordertype,mfor_buysell,mfor_orderstatus,
-            mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,mfor_amount,mfor_foliono,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,
-            mfor_orderoctime,mfor_orderlmtime,mfor_entityid) 
+            mfor_transmode,mfor_dptxn,mfor_pfuserid,mfor_clientcode,mfor_schemecd,mfor_amount,mfor_qty,mfor_foliono,mfor_kycstatus,mfor_euin,mfor_euinflag,mfor_dpc,mfor_ipadd,
+            mfor_orderoctime,mfor_orderlmtime,mfor_entityid,mfor_memberid,mfor_subbrcode,mfor_subbrokerarn) 
             SELECT orormfprodtype,orormfpflistid,ororportfolioid,orormftrantype,ormffundordelstrtyp,orormfwhattran,'PNS',
-            'P','P',ororpfuserid,B.clientcode,orormffndcode,ormffundordelsamt,D.fopfamcfolionumber,C.lguserkycstatus,'','N','N',C.lguseripaddress,
-            CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid from webapp.pfmforlist A 
+            'P','P',ororpfuserid,B.clientcode,orormffndcode,ormffundordelsamt,ormffundordunit,D.fopfamcfolionumber,C.lguserkycstatus,'','N','N',C.lguseripaddress,
+            CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,entityid,'','','' from webapp.pfmforlist A 
             LEFT OUTER JOIN webapp.uccclientmaster B ON (A.ororpfuserid = B.ucclguserid AND A.entityid = B.uccentityid) 
             LEFT OUTER JOIN webapp.userlogin C ON (A.ororpfuserid = C.lguserid AND A.entityid = C.lgentityid) 
             LEFT OUTER JOIN webapp.mffoliodetails D ON (A.ororfndamcnatcode = D.foamcnatcode AND A.entityid = D.foentityid) 
@@ -1105,7 +1105,13 @@ def fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt =N
 def one_fetchsucfai_recs(con, cur, orid_tuple, ord_type, userid, entityid, fromdt, todt, rectype):
 # Don't call this directly, call this function via fetchsucfai_recs
     qry = "SELECT json_agg(b) FROM ("
-    qry = qry + " SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode,X.mfor_orderid FROM webapp.mforderdetails X"
+    qry = qry + " SELECT X.mfor_uniquereferencenumber,Y.orpfportfolioname,Y.orormffundname,X.mfor_amount,X.mfor_valierrors,X.mfor_clientcode,X.mfor_orderid,"    
+    qry = qry + " CASE"
+    qry = qry + " WHEN X.mfor_buysell = 'P' THEN 'BUY'" 
+    qry = qry + " WHEN X.mfor_buysell = 'R' THEN 'SELL'"
+    qry = qry + " END as mfor_buysell,"
+    qry = qry + " X.mfor_qty, X.mfor_producttype"
+    qry = qry + " FROM webapp.mforderdetails X"
     qry = qry + " LEFT OUTER JOIN webapp.pfmforlist Y ON (Y.ororportfolioid = X.mfor_ororportfolioid AND Y.orormfpflistid = X.mfor_orormfpflistid AND Y.entityid = X.mfor_entityid)"        
     qry = qry + " WHERE mfor_ordertype = %s"
 
@@ -1234,23 +1240,48 @@ def mfordersubmit():
             if orderres['success_flag'] == '0':
                 
                 if orderres['order_type'] == 'OneTime':
+                    orderstatus = "PPY"
                     ot_orderids.append(orderres['trans_no'])
-                    command = cur.mogrify("""
-                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'PPY', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
-                    """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
-                    print(command)
-                    cur, dbqerr = db.mydbfunc(con,cur,command)
-
-                    if cur.closed == True:
-                        if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                            dbqerr['statusdetails']="selecting order to submit to BSE failed"
-                        resp = make_response(jsonify(dbqerr), 400)
-                        return(resp)
-                
+                elif orderres['order_type'] == 'BSMFsell':
+                    orderstatus = "SBE"
+                    ot_orderids.append(orderres['trans_no'])
                 elif orderres['order_type'] == 'SIP':
-                    sip_orderids.append(orderres['trans_no'])
+                    orderstatus = "SRS"
+                    sip_orderids.append(orderres['trans_no'])                   
+                    
                     command = cur.mogrify("""
-                        UPDATE webapp.mforderdetails SET mfor_orderstatus = 'SRS', mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                    """,(orderstatus, orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+
+            else:
+                
+                if orderres['order_type'] == 'OneTime':
+                    orderstatus = "FAI"
+                    ot_orderids.append(orderres['trans_no'])
+                elif orderres['order_type'] == 'BSMFsell':
+                    orderstatus = "FAI"
+                    ot_orderids.append(orderres['trans_no'])
+                elif orderres['order_type'] == 'SIP':
+                    orderstatus = "FAI"
+                    sip_orderids.append(orderres['trans_no'])                   
+                
+                command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_valierrors = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
+                """,(orderstatus,orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
+
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            '''
+                elif orderres['order_type'] == 'SIP':
+                    
+                    command = cur.mogrify("""
+                        UPDATE webapp.mforderdetails SET mfor_orderstatus = %s, mfor_orderid = %s, mfor_bseremarks = %s WHERE mfor_uniquereferencenumber = %s AND mfor_pfuserid = %s AND mfor_entityid = %s;
                     """,(orderres['order_id'],orderres['bse_remarks'],orderres['trans_no'],userid,entityid,))
                     print(command)
                     cur, dbqerr = db.mydbfunc(con,cur,command)
@@ -1259,6 +1290,7 @@ def mfordersubmit():
                             dbqerr['statusdetails']="selecting order to submit to BSE failed"
                         resp = make_response(jsonify(dbqerr), 400)
                         return(resp)
+            
             else:
                 if orderres['order_type'] == 'OneTime':
                     ot_orderids.append(orderres['trans_no'])
@@ -1280,33 +1312,38 @@ def mfordersubmit():
                         dbqerr['statusdetails']="selecting order to submit to BSE failed"
                     resp = make_response(jsonify(dbqerr), 400)
                     return(resp)
+            '''
+            command = cur.mogrify(
+                """
+                UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
+                WHERE ormffndstatus in ('SUBM') 
+                AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
+                AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
+                """,(fndstatus,pfsavetimestamp,orderres['trans_no'],segment,userid,entityid,segment,userid,entityid,))
 
-                command = cur.mogrify(
-                    """
-                    UPDATE webapp.pfmforlist SET ormffndstatus = %s, ormflmtime = %s 
-                    WHERE ormffndstatus in ('SUBM') 
-                    AND orormfpflistid = (SELECT mfor_orormfpflistid FROM webapp.mforderdetails WHERE mfor_uniquereferencenumber = %s AND mfor_producttype = %s AND mfor_pfuserid = %s AND mfor_entityid = %s)                    
-                    AND orormfprodtype = %s AND ororpfuserid = %s AND entityid = %s;
-                    """,(fndstatus,pfsavetimestamp,orderres['trans_no'],segment,userid,entityid,segment,userid,entityid,))
-
-                print(command)
-                cur, dbqerr = db.mydbfunc(con,cur,command)
-                if cur.closed == True:
-                    if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                        dbqerr['statusdetails']="selecting order to submit to BSE failed"
-                    resp = make_response(jsonify(dbqerr), 400)
-                    return(resp)
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="selecting order to submit to BSE failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
 
             con.commit()
 
         #if orderres['order_type'] == 'OneTime':
         if len(ot_orderids) > 0:
-            str2 = tuple(ot_orderids)           
+            if orderres['order_type'] == 'OneTime':
+                ordtyp = "One Time"
+            elif orderres['order_type'] == 'BSMFsell':
+                ordtyp = "BSMFsell"
+
+            str2 = tuple(ot_orderids)
             
             frmdt = (datetime.now() + timedelta(days=-1)).strftime('%d-%b-%Y')
             todt = datetime.now().strftime('%d-%b-%Y')
 
-            all_recs = fetchsucfai_recs(con, cur, str2, 'One Time', userid, entityid, frmdt, todt, 'BFP')
+            all_recs = fetchsucfai_recs(con, cur, str2, ordtyp , userid, entityid, frmdt, todt, 'BFP')
             print('*******************ord_type')
             print(orderres['order_type'])
             print(str2)
@@ -1314,14 +1351,9 @@ def mfordersubmit():
             print('*******************ord_type')
 
             resp_recs = all_recs
-            '''
-            resp_recs={
-                'success_recs': all_records['suc_records,
-                'failure_recs': fai_records
-            }
-            '''
+
             print(json.dumps(resp_recs))
-            
+      
         #elif orderres['order_type'] == 'SIP':
         elif len(sip_orderids) > 0:
             resp_recs = {
@@ -1732,7 +1764,7 @@ def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
                 ((SELECT COUNT(1) WHERE dpos_entityid = %s AND dpos_pfuserid = %s  AND dpos_pfportfolioid = %s AND dpos_producttype = %s AND dpos_schemecd = %s) > 0) 
                     THEN 'ADDITIONAL' 
                     ELSE 'FRESH'            
-        END AS buyselltyp,
+        END AS buyselltyp
         from webapp.dailyposition dp
         LEFT JOIN webapp.fundmaster fm ON fm.fndschcdfrmbse = dp.dpos_schemecd AND fm.entityid = dp.dpos_entityid
         LEFT JOIN webapp.mffoliodetails fo ON fo.foentityid = dp.dpos_entityid AND fo.fopfportfolioid = dp.dpos_pfportfolioid AND fo.foamcnatcode = fm.fndamcnatcode
@@ -1765,17 +1797,17 @@ def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
                 if record['available_unit'] <= ord['mfor_qty']:
                     haserror = True
                     ms = "Order quantity is more than avaialble quantity"
-                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+                    errormsg = ms if errormsg == None else errormsg  + " | " + ms
 
                 if (ord['mfor_qty'] % record['fndmulredamt'] > 0):
                     haserror = True
                     ms = "redumption qty not in allowed multiples (" +  record['fndmulredamt'] + ")"
-                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+                    errormsg = ms if errormsg == None else errormsg  + " | " + ms
                 
                 if (ord['mfor_qty'] < record['fndminredamt'] > 0):
                     haserror = True
                     ms = "redumption qty is less than min redemption allowed (orderqty: " + ord['mfor_qty'] + ", min redemption allowed: " + record['fndminredamt'] + ")"
-                    errormsg = ms if errormsg == '' else errormsg  + " | " + ms
+                    errormsg = ms if errormsg == None else errormsg  + " | " + ms
 
                 if haserror:
                     pass
@@ -1793,7 +1825,35 @@ def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
         if fld_to_val == "fresh_addi":
             ord['mfor_buyselltype'] = record['buyselltyp']
 
-        
+        if haserror:
+            pass
+        else:
+            # Update the DB with the arrived values
+            qry_str = "UPDATE webapp.mforderdetails SET mfor_buyselltype = %s, mfor_foliono = %s"
+
+            if buy_sell == "R":
+                qry_str = qry_str + ", mfor_allredeem = %s, mfor_minredemption = %s"
+
+            qry_str = qry_str + " WHERE mfor_entityid = %s AND mfor_pfuserid = %s AND mfor_ororportfolioid = %s AND mfor_producttype = %s AND  mfor_schemecd = %s AND ormffndstatus = 'INCART' AND mfor_ordertype = %s;"
+
+            if buy_sell == "R":
+                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'], ord['mfor_allredeem'], ord['mfor_minredemption'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_ordertype']))
+            else:
+                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_ordertype']))
+                
+            
+            print(command)
+            cur1, dbqerr = db.mydbfunc(con1,cur1,command)
+
+            if cur1.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    haserror = True
+                    ms = "order data additional data update failed with DB error"
+                    errormsg = ms if errormsg == None else errormsg  + " | " + ms
+                    print(haserror,errormsg)
+            else:
+                con1.commit()
+        # Update the DB with the arrived values end
     # command 
     # return values: rqty, rall, rmin,  err, failreason
     return haserror, errormsg
