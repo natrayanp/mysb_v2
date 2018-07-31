@@ -35,7 +35,7 @@ def mforderdatafetch():
         print(userid,entityid)
         payload= request.get_json()
         print(payload)
-
+        
         prod = payload.get('prod',None)
         trantype = payload.get('trantype',None)
         status  = None 

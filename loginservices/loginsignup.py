@@ -21,7 +21,7 @@ import os
 def testst():
     if request.method=='GET':
         print('inside get of test1')
-
+        return 'inside test app after db'
         con,cur=db.mydbopncon()
 
         #need to think on a way to get entity id for this
