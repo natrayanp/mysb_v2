@@ -1213,7 +1213,7 @@ def mfordersubmit():
         ###  this should be a API call in lambda  #####
         orderresp = mforderapi.place_order_bse(order_records)
         ###  this should be a API call in lambda  #####
-
+        print("back to mfordersubmit")
         print(orderresp)
         #Add code to update the order id
 
@@ -1746,6 +1746,7 @@ def prepare_onetime_ord(ord):
 # Function to validate redemption order quantiy against holding quantity
 def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
     #Validate order qty
+    print("validate add details to order")
     haserror = False
     errormsg = None
     buy_sell = ord['mfor_buysell']
@@ -1829,17 +1830,17 @@ def validate_add_details_to_order(fld_to_val, ord, con1, cur1):
             pass
         else:
             # Update the DB with the arrived values
-            qry_str = "UPDATE webapp.mforderdetails SET mfor_buyselltype = %s, mfor_foliono = %s"
+            qry_str = "UPDATE webapp.mforderdetails SET mfor_buyselltype = %s, mfor_foliono = %s, mfor_orormfpflistid = %s"
 
             if buy_sell == "R":
                 qry_str = qry_str + ", mfor_allredeem = %s, mfor_minredemption = %s"
 
-            qry_str = qry_str + " WHERE mfor_entityid = %s AND mfor_pfuserid = %s AND mfor_ororportfolioid = %s AND mfor_producttype = %s AND  mfor_schemecd = %s AND ormffndstatus = 'INCART' AND mfor_ordertype = %s;"
+            qry_str = qry_str + " WHERE mfor_entityid = %s AND mfor_pfuserid = %s AND mfor_ororportfolioid = %s AND mfor_producttype = %s AND  mfor_schemecd = %s AND mfor_uniquereferencenumber = %s AND mfor_ordertype = %s;"
 
             if buy_sell == "R":
-                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'], ord['mfor_allredeem'], ord['mfor_minredemption'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_ordertype']))
+                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'], ord['mfor_orormfpflistid'], ord['mfor_allredeem'], ord['mfor_minredemption'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_uniquereferencenumber'],ord['mfor_ordertype']))
             else:
-                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_ordertype']))
+                command = cur1.mogrify(qry_str,(ord['mfor_buyselltype'], ord['mfor_foliono'],ord['mfor_orormfpflistid'],entity,usrid,pfid,prodtyp,schmcd,ord['mfor_uniquereferencenumber'],ord['mfor_ordertype']))
                 
             
             print(command)

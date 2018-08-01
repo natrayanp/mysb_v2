@@ -95,20 +95,20 @@ def send_one_order(bse_order):
 
     ## prepare order, post it to BSE and save response
     ## for lumpsum transaction 
-    if (bse_order['mfor_ordertype'] == 'OneTime'):
+    if (bse_order['mfor_ordertype'] == 'OneTime' or bse_order['mfor_ordertype'] == 'BSMFsell'):
         ## prepare the transaction record
         #bse_order = prepare_order(transaction, pass_dict)
         ## post the transaction
         print('****************************')
         print("before delete")
         print(bse_order)
-
+        ord_type = bse_order['mfor_ordertype']
         del bse_order['mfor_ordertype']
         
         print("after delete")
         print(bse_order)
         
-        order_resp = soap_post_onetime_order(client, bse_order)
+        order_resp = soap_post_onetime_order(client, bse_order, ord_type)
         
         print("order id")
         print(order_resp)
@@ -208,7 +208,7 @@ def set_soap_logging():
 
 
 ## fire SOAP query to post the order 
-def soap_post_onetime_order(client, bse_order):
+def soap_post_onetime_order(client, bse_order, ord_type):
     method_url = settings.METHOD_ORDER_URL[settings.LIVE] + 'orderEntryParam'
     header_value = soap_set_wsa_headers(method_url, settings.SVC_ORDER_URL[settings.LIVE])
     response = client.service.orderEntryParam(
@@ -247,14 +247,14 @@ def soap_post_onetime_order(client, bse_order):
     response = response.split('|')
     print(response)
     ## store the order response in a table
-    order_resp= store_order_response(response, 'OneTime')
+    order_resp= store_order_response(response, ord_type)
     
     status = order_resp['success_flag']
     if (status == '0'):
         # order successful
-        print("ontime order successful")
+        print("ontime buy/sell order successful")
     else:
-        print("order failure")
+        print("ontime buy/sell order failure")
         
         '''
         raise Exception(
@@ -348,7 +348,7 @@ def get_payment_link_direct(payload):
 # store response to order entry from bse 
 def store_order_response(response, order_type):
 ## lumpsum order 
-    if (order_type == 'OneTime'):
+    if (order_type == 'OneTime' or order_type == 'BSMFsell'):
         trans_response = {
             'trans_code' : response[0],
             'trans_no' : response[1],
@@ -358,7 +358,7 @@ def store_order_response(response, order_type):
             'client_code' : response[5],
             'bse_remarks' : response[6],
             'success_flag' : response[7],
-            'order_type' : 'OneTime',
+            'order_type' : order_type,
         }
     ## SIP order  
     elif (order_type == 'SIP'):
@@ -371,7 +371,7 @@ def store_order_response(response, order_type):
             'order_id' : response[5],
             'bse_remarks' : response[6],
             'success_flag' : response[7],
-            'order_type' : 'SIP',
+            'order_type' : order_type,
         }
     #trans_response.save()
     return trans_response
