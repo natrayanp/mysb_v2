@@ -21,6 +21,7 @@ from pf import mforderpaystatus_bg
 from pf import mforderapijobs
 from pf import dashboard
 from loginservices import loginsignup
+from pf import mandate
 
 '''
 @app.after_request

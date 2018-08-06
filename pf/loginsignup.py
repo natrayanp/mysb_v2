@@ -3,6 +3,7 @@ from flask import redirect, request,make_response
 from flask_cors import CORS, cross_origin
 from datetime import datetime
 from flask import jsonify
+from upstox_api.api import *
 
 import firebase_admin
 from firebase_admin import credentials
@@ -30,6 +31,7 @@ def natkeyss():
         print("inside SETNATKEY POST")
         print(os.path.dirname(__file__)+'/serviceAccountKey.json')
 
+        
         try:
             print('inside try')
             default_app=firebase_admin.get_app('natfbloginsingupapp')
@@ -45,152 +47,163 @@ def natkeyss():
         payload = request.stream.read().decode('utf8')
         payload1=json.loads(payload)
         print(payload1)
-        id_token1=payload1['natkey']
-        id_token2=id_token1['stsTokenManager']
-        id_token=id_token2['accessToken']
-        print(type(payload1))
-        print(id_token)
-        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        
-        try:
-            decoded_token = auth.verify_id_token(id_token,app=default_app)
-        except ValueError:
-            errorresp= {'natstatus':'error','statusdetails':'Not a valid user credentials'}
-            resps = make_response(jsonify(errorresp), 400)
-            print(resps)
-            return(resps)
+
+        if payload1['method'] == 'upstox':
+            s = Session ('9Rt7ZkV5TM8HaFVZN4bi03f86JDWft6E4hu5Krpl')
+            s.set_redirect_uri ('http://127.0.0.1:4200/upstox')
+            s.set_api_secret ('ua5lqnvss9')
+            lgurl = s.get_login_url()
+            print(lgurl)
+            print('done done done done')
+            return redirect(lgurl, code=302)
         else:
-            uid = decoded_token['uid']
-            exp = decoded_token['exp']
-            iat = decoded_token['iat']
-            email = decoded_token['email']
-            print(uid)
-            print(decoded_token)
-        
-        #This is to be moved to a configurable place
-        #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
-        #This is to be moved to a configurable place
-        #con=psycopg2.connect(conn_string)
-        #cur = con.cursor()
-        con,cur=db.mydbopncon()
+            # This is for firebase
+            id_token1=payload1['natkey']
+            id_token2=id_token1['stsTokenManager']
+            id_token=id_token2['accessToken']
+            print(type(payload1))
+            print(id_token)
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            
+            try:
+                decoded_token = auth.verify_id_token(id_token,app=default_app)
+            except ValueError:
+                errorresp= {'natstatus':'error','statusdetails':'Not a valid user credentials'}
+                resps = make_response(jsonify(errorresp), 400)
+                print(resps)
+                return(resps)
+            else:
+                uid = decoded_token['uid']
+                exp = decoded_token['exp']
+                iat = decoded_token['iat']
+                email = decoded_token['email']
+                print(uid)
+                print(decoded_token)
+            
+            #This is to be moved to a configurable place
+            #conn_string = "host='localhost' dbname='postgres' user='postgres' password='password123'"
+            #This is to be moved to a configurable place
+            #con=psycopg2.connect(conn_string)
+            #cur = con.cursor()
+            con,cur=db.mydbopncon()
 
-        #need to think on a way to get entity id for this
+            #need to think on a way to get entity id for this
 
-        command = cur.mogrify("SELECT lguserid,lgusername,lgusertype,lgentityid,lguserstatus,lguserlastlogin FROM webapp.userlogin WHERE lguserid = %s AND lguserstatus NOT IN ('S','I','B');",(uid,) )
-        print(command)
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        print(cur)
-        print(dbqerr)
-        print(type(dbqerr))
-        print(dbqerr['natstatus'])
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="loginuser Fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        else:
-            pass
-        
-        records=[]
-        for record in cur:  
-            print('inside for')
-            print(record)             
-            records.append(record)
+            command = cur.mogrify("SELECT lguserid,lgusername,lgusertype,lgentityid,lguserstatus,lguserlastlogin FROM webapp.userlogin WHERE lguserid = %s AND lguserstatus NOT IN ('S','I','B');",(uid,) )
+            print(command)
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            print(cur)
+            print(dbqerr)
+            print(type(dbqerr))
+            print(dbqerr['natstatus'])
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="loginuser Fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            else:
+                pass
+            
+            records=[]
+            for record in cur:  
+                print('inside for')
+                print(record)             
+                records.append(record)
 
-        print(len(records))
+            print(len(records))
 
-        #if len(records) == 0:
-        if (cur.rowcount) == 0:
-            errorresp= {'natstatus':'error','statusdetails':'User not registered/activated/blocked'}
-            resps = make_response(jsonify(errorresp), 400)
-            print(resps)    
-            return(resps)
-        else:
-            lguserid,lgusername,lgusertype,lgentityid,lguserstatus,lguserlastlogin = records[0]
-  
-        print(lguserid)
-        print(lgusername)
-        print(lgusertype)   
-        print(lgentityid)
-        print(lguserstatus)
-        if lguserlastlogin is not None:
-            print(lguserlastlogin.strftime('%Y-%m-%d %H:%M:%S'))
-            lguserlastlogin=lguserlastlogin.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            lguserlastlogin=''
+            #if len(records) == 0:
+            if (cur.rowcount) == 0:
+                errorresp= {'natstatus':'error','statusdetails':'User not registered/activated/blocked'}
+                resps = make_response(jsonify(errorresp), 400)
+                print(resps)    
+                return(resps)
+            else:
+                lguserid,lgusername,lgusertype,lgentityid,lguserstatus,lguserlastlogin = records[0]
+    
+            print(lguserid)
+            print(lgusername)
+            print(lgusertype)   
+            print(lgentityid)
+            print(lguserstatus)
+            if lguserlastlogin is not None:
+                print(lguserlastlogin.strftime('%Y-%m-%d %H:%M:%S'))
+                lguserlastlogin=lguserlastlogin.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                lguserlastlogin=''
 
-        #Update login table with the login time etc START
+            #Update login table with the login time etc START
 
-        command = cur.mogrify("UPDATE webapp.userlogin SET lguserlastlogin = (SELECT (CASE WHEN (lgusercurrentlogin IS NULL OR lgusercurrentlogin < '01-01-1980') THEN CURRENT_TIMESTAMP ELSE lgusercurrentlogin END) AS lgusercurrentlogin FROM webapp.userlogin WHERE lguserid = %s AND lgentityid = %s), lgusercurrentlogin = CURRENT_TIMESTAMP WHERE lguserid = %s AND lgentityid = %s;",(uid,lgentityid,uid,lgentityid,))
-        #command1 = cur.mogrify("select json_agg(c) from (SELECT nfuuid,nfumessage,nfumsgtype FROM notifiuser WHERE nfuuserid = %s AND nfuentityid = %s AND nfuscreenid='dashboard' AND nfustatus = 'C' and nfulazyldid = %s) as c;",(userid,entityid,lazyloadid) )
-        print('after lazid update')   
-        print(command)            
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        print(dbqerr['natstatus'])
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="pf Fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        #con.commit()                  
-        print(cur)
-        print('consider insert or update is successful')
+            command = cur.mogrify("UPDATE webapp.userlogin SET lguserlastlogin = (SELECT (CASE WHEN (lgusercurrentlogin IS NULL OR lgusercurrentlogin < '01-01-1980') THEN CURRENT_TIMESTAMP ELSE lgusercurrentlogin END) AS lgusercurrentlogin FROM webapp.userlogin WHERE lguserid = %s AND lgentityid = %s), lgusercurrentlogin = CURRENT_TIMESTAMP WHERE lguserid = %s AND lgentityid = %s;",(uid,lgentityid,uid,lgentityid,))
+            #command1 = cur.mogrify("select json_agg(c) from (SELECT nfuuid,nfumessage,nfumsgtype FROM notifiuser WHERE nfuuserid = %s AND nfuentityid = %s AND nfuscreenid='dashboard' AND nfustatus = 'C' and nfulazyldid = %s) as c;",(userid,entityid,lazyloadid) )
+            print('after lazid update')   
+            print(command)            
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            print(dbqerr['natstatus'])
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="pf Fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            #con.commit()                  
+            print(cur)
+            print('consider insert or update is successful')
 
-        #Update login table with the login time etc END
+            #Update login table with the login time etc END
 
-        '''
-        #code to prove all update statemnts are in a transaction untill commit is explicitly issued
-        #test code start
-        command = cur.mogrify("UPDATE webapp.userlogin SET LGSINUPUSERNAME = 'TESTUSER' WHERE lguserid = 'BfulXOzj3ibSPSBDVgzMEAF1gax1' AND lgentityid = 'IN';")
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        
-        print('################commit####################')
-        #con.rollback()
-        print('################commit####################')
-        con.commit()
-        print('################commit####################')
-        #test code end
-        '''
-        natseckey='secret'
+            '''
+            #code to prove all update statemnts are in a transaction untill commit is explicitly issued
+            #test code start
+            command = cur.mogrify("UPDATE webapp.userlogin SET LGSINUPUSERNAME = 'TESTUSER' WHERE lguserid = 'BfulXOzj3ibSPSBDVgzMEAF1gax1' AND lgentityid = 'IN';")
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            
+            print('################commit####################')
+            #con.rollback()
+            print('################commit####################')
+            con.commit()
+            print('################commit####################')
+            #test code end
+            '''
+            natseckey='secret'
 
-        command = cur.mogrify("select secretcode,seccdid from webapp.secrettkn;" )
-        cur, dbqerr = db.mydbfunc(con,cur,command)
-        print(cur)
-        print(dbqerr)
-        print(type(dbqerr))
-        print(dbqerr['natstatus'])
-        if cur.closed == True:
-            if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
-                dbqerr['statusdetails']="loginuser Fetch failed"
-            resp = make_response(jsonify(dbqerr), 400)
-            return(resp)
-        else:
-            pass
-        
-        records=[]
-        for record in cur:  
-            print('inside for')
-            print(record)             
-            records.append(record)
+            command = cur.mogrify("select secretcode,seccdid from webapp.secrettkn;" )
+            cur, dbqerr = db.mydbfunc(con,cur,command)
+            print(cur)
+            print(dbqerr)
+            print(type(dbqerr))
+            print(dbqerr['natstatus'])
+            if cur.closed == True:
+                if(dbqerr['natstatus'] == "error" or dbqerr['natstatus'] == "warning"):
+                    dbqerr['statusdetails']="loginuser Fetch failed"
+                resp = make_response(jsonify(dbqerr), 400)
+                return(resp)
+            else:
+                pass
+            
+            records=[]
+            for record in cur:  
+                print('inside for')
+                print(record)             
+                records.append(record)
 
-        print(len(records))
+            print(len(records))
 
-        if len(records) == 0:
-            errorresp= {'natstatus':'error','statusdetails':'DB error (token creation failure)'}
-            resps = make_response(jsonify(errorresp), 400)
-            print(resps)
-            return(resps)
-        else:
-            secretcode,seccdid = records[0]
+            if len(records) == 0:
+                errorresp= {'natstatus':'error','statusdetails':'DB error (token creation failure)'}
+                resps = make_response(jsonify(errorresp), 400)
+                print(resps)
+                return(resps)
+            else:
+                secretcode,seccdid = records[0]
 
 
-        #Call JWT to generate JWT START
-        natjwt =  jwt.encode({'uid': lguserid,'entityid':lgentityid,'username':lgusername,'lastlogin':lguserlastlogin,'userstatus':lguserstatus,'exp': exp,'iat': iat, 'usertype':lgusertype,'skd':seccdid}, secretcode, algorithm='HS256')          
-        print("printing nat jwt")
-        print(natjwt)
-        #Call JWT to generate JWT END
-        db.mydbcloseall(con,cur)
-        return (json.dumps({"natjwt" :natjwt.decode("utf-8")}))
+            #Call JWT to generate JWT START
+            natjwt =  jwt.encode({'uid': lguserid,'entityid':lgentityid,'username':lgusername,'lastlogin':lguserlastlogin,'userstatus':lguserstatus,'exp': exp,'iat': iat, 'usertype':lgusertype,'skd':seccdid}, secretcode, algorithm='HS256')          
+            print("printing nat jwt")
+            print(natjwt)
+            #Call JWT to generate JWT END
+            db.mydbcloseall(con,cur)
+            return (json.dumps({"natjwt" :natjwt.decode("utf-8")}))
     
 @app.route('/signup',methods=['GET','POST','OPTIONS'])
 def signupf():
@@ -567,3 +580,90 @@ def checkpanstatus(lgsinuppan,con,cur,lguserid,lgentityid):
     responsemsg = "Signup successful. Please login with registered user id"
     return responsemsg
 
+
+
+@app.route('/redirecturl',methods=['POST','OPTIONS'])
+def upstoxredirect():
+    #This is called by setjws service
+    if request.method=='OPTIONS':
+        print("inside upstoxredirect options")
+        return 'inside upstoxredirect options'
+
+    elif request.method=='POST':
+        print("inside upstoxredirect GET")        
+        payload= request.get_json() 
+        
+        if payload['provider'] == 'upstox':
+            #This is hardcoded only now.  Incase of lauch in different entity this is to be get from front end.
+            s = Session ('9Rt7ZkV5TM8HaFVZN4bi03f86JDWft6E4hu5Krpl')
+            s.set_redirect_uri ('http://127.0.0.1:4200/upstox')
+            s.set_api_secret ('ua5lqnvss9')
+            lgurl = s.get_login_url()
+            print(lgurl)
+
+        return make_response(jsonify(lgurl), 200)
+
+@app.route('/loginpost',methods=['GET','POST','OPTIONS'])
+def loginpost():
+    #This is called by setjws service
+    if request.method=='OPTIONS':
+        print("inside upstoxredirect options")
+        return 'inside upstoxredirect options'
+
+    elif request.method=='POST':
+        print("inside upstoxredirect GET")        
+        payload= request.get_json() 
+        
+        if payload['provider'] == 'upstox':
+            s = Session ('9Rt7ZkV5TM8HaFVZN4bi03f86JDWft6E4hu5Krpl')
+            s.set_redirect_uri ('http://127.0.0.1:4200/upstox')
+            s.set_api_secret ('ua5lqnvss9')
+            print(payload['code'])
+            s.set_code (payload['code'])
+            access_token = s.retrieve_access_token()
+            print ('Received access_token: %s' % access_token)
+            u = Upstox ('9Rt7ZkV5TM8HaFVZN4bi03f86JDWft6E4hu5Krpl', access_token)
+            up = u.get_profile()
+            print (u.get_profile()) # get profile
+        
+        elif payload['provider'] == 'zerodha':
+            pass
+            
+        print(os.path.dirname(__file__)+'/serviceAccountKey.json')
+        
+        try:
+            print('inside try')
+            default_app=firebase_admin.get_app('natfbloginsingupapp')
+            print('about inside try')
+        except ValueError:
+            print('inside value error')
+            cred = credentials.Certificate(os.path.dirname(__file__)+'/serviceAccountKey.json')
+            default_app = firebase_admin.initialize_app(credential=cred,name='natfbloginsingupapp')
+            '''
+            options = {
+                'serviceAccountId': 'firebase-adminsdk-g6qg2@ananew-472d8.iam.gserviceaccount.com',
+            }
+            default_app = firebase_admin.initialize_app(options=options, name='natfbloginsingupapp')
+            '''
+        else:
+            pass
+            
+        uid = payload['provider'] + up['client_id'] + up['email']
+        additional_claims = {
+            'premiumAccount': True,
+            'access_token' : access_token
+        }
+        try:
+            custom_token = auth.create_custom_token(uid, additional_claims,app=default_app)
+        except ValueError:
+            errorresp= {'natstatus':'error','statusdetails':'Not a valid user credentials'}
+            resps = make_response(jsonify(errorresp), 400)
+            print(resps)
+            return(resps)
+        else:
+            print(custom_token)
+        data = {
+            'token' : custom_token.decode('utf-8')
+        }
+        print('after last')
+        return make_response(jsonify(data), 200)

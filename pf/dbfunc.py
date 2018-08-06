@@ -47,4 +47,15 @@ def mydbcloseall(con,cur):
     cur.close()
     con.close()
 
-
+def mydbbegin(con,cur):
+    status = None
+    command = cur.mogrify("BEGIN;")
+    cur, dbqerr = mydbfunc(con,cur,command)
+    
+    if cur.closed == True:
+        haserror = True
+        dbqerr['statusdetails'] = "BEGIN statement execution failed"
+        return status,dbqerr['statusdetails']
+    else:
+        status = False
+        return status,"BEGIN statment execution successful"

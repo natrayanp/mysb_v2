@@ -20,7 +20,7 @@ MEMBERID = ['17123', '17123']
 USERID = ['1712301', '1712301'] 
 
 # set on your own
-PASSWORD = ['@123456', '@123456']
+PASSWORD = ['@654321', '@123456']
 ## unique passkey that should ideally be freshly generated random string for every transaction
 ## but i have used a constant here to simplofy things
 PASSKEY = ['0123456789', '9958788281']
@@ -82,6 +82,20 @@ SVC_PAYLNK_URL = [
 ]
 METHOD_PAYLNK_URL = [
     'http://tempuri.org/IStarMFPaymentGatewayService/'
+    #'http://www.bsestarmf.in/2016/01/IStarMFWebService/' :operation soapAction=
+]
+
+#url for BSEStar order Mandate details link
+WSDL_MANDATESTAT_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFWebService/StarMFWebService.svc?singleWsdl' 
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc?singleWsdl'
+]
+SVC_MANDATESTAT_URL = [
+    'http://bsestarmfdemo.bseindia.com/StarMFWebService/StarMFWebService.svc/Basic'
+    #'http://www.bsestarmf.in/StarMFWebService/StarMFWebService.svc/Basic' soap12:address location=
+]
+METHOD_MANDATESTAT_URL = [
+    'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
     #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
 ]
 
@@ -98,6 +112,9 @@ METHOD_ORDERSTAT_URL = [
     'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
     #'http://www.bsestarmf.in/2016/01/IStarMFWebService/'
 ]
+
+
+
 
 BSESTAR_LOGIN_PG = ["https://bsestarmfdemo.bseindia.com",""]
 

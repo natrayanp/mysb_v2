@@ -1572,13 +1572,15 @@ def channel_ready_future(channel):
 def insecure_channel(target, options=None):
     """Creates an insecure Channel to a server.
 
+    The returned Channel is thread-safe.
+
     Args:
       target: The server address
       options: An optional list of key-value pairs (channel args
         in gRPC Core runtime) to configure the channel.
 
     Returns:
-      A Channel object.
+      A Channel.
     """
     from grpc import _channel  # pylint: disable=cyclic-import
     return _channel.Channel(target, () if options is None else options, None)
@@ -1587,6 +1589,8 @@ def insecure_channel(target, options=None):
 def secure_channel(target, credentials, options=None):
     """Creates a secure Channel to a server.
 
+    The returned Channel is thread-safe.
+
     Args:
       target: The server address.
       credentials: A ChannelCredentials instance.
@@ -1594,7 +1598,7 @@ def secure_channel(target, credentials, options=None):
         in gRPC Core runtime) to configure the channel.
 
     Returns:
-      A Channel object.
+      A Channel.
     """
     from grpc import _channel  # pylint: disable=cyclic-import
     return _channel.Channel(target, () if options is None else options,
@@ -1656,9 +1660,11 @@ def server(thread_pool,
       A Server object.
     """
     from grpc import _server  # pylint: disable=cyclic-import
-    return _server.Server(thread_pool, () if handlers is None else handlers, ()
-                          if interceptors is None else interceptors, () if
-                          options is None else options, maximum_concurrent_rpcs)
+    return _server.create_server(thread_pool, ()
+                                 if handlers is None else handlers, ()
+                                 if interceptors is None else interceptors, ()
+                                 if options is None else options,
+                                 maximum_concurrent_rpcs)
 
 
 ###################################  __all__  #################################

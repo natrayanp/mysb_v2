@@ -372,7 +372,7 @@ def signupf():
             print(cur)
             print('consider insert or update is successful')
 
-            responsemsg = "User signup successful. Activation email will be sent to "+email
+            responsemsg = "User signup successful. Activation email will be sent to "+ email
             #print(responsemsg)
 
             #INSERT NOTIFICATION ENTRY FOR PENDING USER REGISTRAION COMPLETION START

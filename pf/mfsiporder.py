@@ -72,7 +72,7 @@ def sip_order_processing(sip_data_for_processing):
     print(sip_records)
     print("len(sip_records")
     print(len(sip_records))
-    if len(sip_records) > 0:    
+    if len(sip_records) > 0:
         print("i am inside sip records")
         for record in sip_records:    
             sip_records_orderids.append(record['mfor_uniquereferencenumber'])
@@ -107,7 +107,7 @@ def sip_order_processing(sip_data_for_processing):
         }
  
         
-        recs = mfordersubmit_cpy(sip_submit_rec)
+        recs = mforder.mfordersubmit_next(sip_submit_rec)
         
         db.mydbcloseall(con,cur)
     else:

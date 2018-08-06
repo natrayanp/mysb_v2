@@ -74,6 +74,9 @@ def place_order_bse(jsondata):
     pool.close()
     pool.join()    
     print('all done')
+    print("order_resp")
+    #order_resp = [{'trans_code': 'NEW', 'trans_no': order_resp[0]['trans_no'], 'order_id': '123456', 'user_id': '1712301', 'member_id': '17123', 'client_code': 'A000000007', 'bse_remarks': '', 'success_flag': '0', 'order_type': 'BSMFsell'}]
+    print(order_resp)
     return order_resp
 
 def update_res(val):
